@@ -4,7 +4,12 @@ using PyPlot
 using HDF5
 using FixedPointNumbers
 
-#Load The Data
+"""
+Import Data from a HDF5 Serialization
+
+These files are derived the original .edf files supplied from the DREAMS
+database
+"""
 function import_data(SubjectID)
     f = HDF5.h5open("/home/mark/current/general-sleep/subject$SubjectID.h5")
     DataSet = read(f["2"])
@@ -13,6 +18,9 @@ function import_data(SubjectID)
     DataSet
 end
 
+"""
+Obtain the raw spectra from SubjectID
+"""
 function raw_spec(SubjectID)
     DD = import_data(SubjectID)
     figure(999)
@@ -21,7 +29,9 @@ function raw_spec(SubjectID)
     Spectra = log(abs(Spectra.^2))
 end
 
-#Generate The Image
+"""
+Generate the spectral image
+"""
 function generate_spectra(DataSet, SubjectID, doPlot)
     figure(101)
     (Spectra,_) = specgram(DataSet, 4096, 100, noverlap=0)
@@ -92,6 +102,11 @@ function refold(data)
     end
     tout
 end
+
+
+"""
+Eliminate series of outliers in the data
+"""
 function robustSpikeElimination(Spectra)
     excitation = sum((Spectra[:,1:end-1].-Spectra[:,2:end]).^2,1)[:]
     ex = refold(excitation)
@@ -144,6 +159,15 @@ function robustSpikeElimination(Spectra)
 end
 
 
+"""
+Create Image for the next stage of processing
+
+Arguments:
+
+- SubjectID  - the identifying number for the subject
+- workingDir - the directory to save intermediate data to
+- doPlot     - plot intermediate results
+"""
 function runAquisition(SubjectID, workingDir, doPlot)
     Data = import_data(SubjectID)
     (Spectra, LSpectra) = generate_spectra(Data, SubjectID, doPlot)

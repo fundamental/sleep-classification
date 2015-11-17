@@ -3,7 +3,15 @@ using PyPlot
 
 getX(img) = size(img)[2]
 getY(img) = size(img)[1]
+
+"""
+Get the pixel value at x,y extending the image for out of bounds values
+"""
 px(img, x, y) = img[Int(max(1,min(getY(img),y))), Int(max(1,min(getX(img),x)))]
+
+"""
+Apply a 3x3 median window to the image
+"""
 function Median3(img)
     result = copy(img)
 
@@ -17,6 +25,14 @@ function Median3(img)
     result
 end
 
+"""
+Apply a NxN 2D median to the image
+
+Arguments:
+
+- img - the 2D Image
+- med - the size (N) of the median window
+"""
 function GeneralMedian(img, med)
     #return img
     @assert isodd(med)
@@ -34,6 +50,9 @@ function GeneralMedian(img, med)
 end
 
 
+"""
+Apply the 3x3 median until the input has approximately converged
+"""
 function recursiveMedian(img)
     for i=1:20
         img = Median3(img)
@@ -47,6 +66,11 @@ function histNormalize(img)
     t./(3*std(t))
 end
 
+"""
+Get mask over image s.t.
+out[a,b] = 1 if low < in[a,b] < high
+           0 otherwise
+"""
 function threshold(img, low, high)
     t = copy(img)
     t[img.>low] = 1
@@ -55,59 +79,61 @@ function threshold(img, low, high)
     t
 end
  
-function labelRow(row)
-    i=0
-    rowLabel = zeros(length(row))
-    currentState = row[1]
-    for x=2:length(row)
-        if(currentState != row[x])
-            currentState = row[x]
-            i+=1
+
+
+function labelClusters(img)
+    function labelRow(row)
+        i=0
+        rowLabel = zeros(length(row))
+        currentState = row[1]
+        for x=2:length(row)
+            if(currentState != row[x])
+                currentState = row[x]
+                i+=1
+            end
+            rowLabel[x] = i
         end
-        rowLabel[x] = i
+        int(rowLabel)
     end
-    int(rowLabel)
-end
 
-function mergeEquivSet(rename, a::Int, b::Int)
-    #Find a set for a/b
-    rA = rename[a]
-    rB = rename[b]
+    function mergeEquivSet(rename, a::Int, b::Int)
+        #Find a set for a/b
+        rA = rename[a]
+        rB = rename[b]
 
-    #Merge two sets
-    if(rA != rB)
-        dest = min(rA,rB)
-        src  = max(rA,rB)
-        for x=keys(rename)
-            if(rename[x] == src)
-                rename[x] = dest
+        #Merge two sets
+        if(rA != rB)
+            dest = min(rA,rB)
+            src  = max(rA,rB)
+            for x=keys(rename)
+                if(rename[x] == src)
+                    rename[x] = dest
+                end
             end
         end
     end
-end
 
-function initialRename(N)
-    rename = Dict{Int,Int}()
-    for i=0:N
-        rename[i] = i
+    function initialRename(N)
+        rename = Dict{Int,Int}()
+        for i=0:N
+            rename[i] = i
+        end
+        rename
     end
-    rename
-end
 
-function findEquiv(rename, imgCol, labelCol)
-    curClass = imgCol[1]
-    curLabel = labelCol[1]
-    for y=2:length(labelCol)
-        if(curClass == imgCol[y])
-            mergeEquivSet(rename, int(curLabel), int(labelCol[y]))
-        else
-            curClass = imgCol[y]
-            curLabel = labelCol[y]
+    function findEquiv(rename, imgCol, labelCol)
+        curClass = imgCol[1]
+        curLabel = labelCol[1]
+        for y=2:length(labelCol)
+            if(curClass == imgCol[y])
+                mergeEquivSet(rename, int(curLabel), int(labelCol[y]))
+            else
+                curClass = imgCol[y]
+                curLabel = labelCol[y]
+            end
         end
     end
-end
 
-function labelClusters(img)
     #Give each row a unique labeling
     labelFirst = mapslices(labelRow, img,2)
     #apply accumulator
@@ -137,6 +163,9 @@ function labelClusters(img)
 end
 
 
+"""
+Generate thresholded versions of the input image
+"""
 function doMakeThresholds(SubjectID, workingDir, doPlot)
     I = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 
