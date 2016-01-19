@@ -277,6 +277,30 @@ function likelyHoodSummaryPlot(title_string::ASCIIString, d1r, d2r, d3r,
     scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
 end
 
+function runIndependentIter(cover::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
+                interest::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
+                iterId::Int,
+                plotId::Int)
+    println("Initial Classification.(+$iterId)..")
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  (d1r+d2r+d3r).>1mean(d1r))
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  (d1r+d2r+d3r).>1mean(d2r))
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, (d1r+d2r+d3r).>1mean(d3r))
+    
+    N = length(d1)
+    if(doPlot)
+        likelyHoodSummaryPlot("Transition Likelyhood(+$iterId)",
+                              d1r, d2r, d3r, ll, plotId)
+    end
+    (d1r, d2r, d3r)
+end
+	
+function showCombined(s, N, ll, doPlot, plotId)
+    if(doPlot)
+        figure(plotId);plt.clf();plot(mean(s,2).*median(s,2))
+        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+    end
+end
+
 function runPeakIter(cover::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
                 interest::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
                 S::Matrix{Float64},
@@ -346,38 +370,16 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     NN(x) = x./maximum(x)
     F(x)  = NN(windowedOperator(x./maximum(x),maximum,5))
 
+    Co = (coverLow,    coverMed,    coverHigh)
+    In = (interestLow, interestMed, interestHigh)
 
-	s=hcat(F(d1r),F(d2r),F(d3r));
-    if(doPlot)
-        figure(505);plt.clf();plot(mean(s,2).*median(s,2))
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
+    #Run some Normal Iterations
+    showCombined(hcat(F(d1r), F(d2r), F(d3r)), N, ll, doPlot, 505)
+    (d1r, d2r, d3r) = runIndependentIter(Co, In, (d1r, d2r, d3r), 1, 406)
+    showCombined(hcat(F(d1r), F(d2r), F(d3r)), N, ll, doPlot, 506)
+    (d1r, d2r, d3r) = runIndependentIter(Co, In, (d1r, d2r, d3r), 2, 407)
 
-    println("Initial Classification.(+1)..")
-    ##plt.close("all")
-    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  (d1r+d2r+d3r).>1mean(d1r))
-    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  (d1r+d2r+d3r).>1mean(d2r))
-    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, (d1r+d2r+d3r).>1mean(d3r))
-    N = length(d1)
-    if(doPlot)
-        likelyHoodSummaryPlot("Transition Likelyhood(+1)",
-                              d1r, d2r, d3r, ll, 406)
-    end
-	s=hcat(F(d1r),F(d2r),F(d3r));
-    if(doPlot)
-        figure(506);plt.clf();plot(mean(s,2).*median(s,2))
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
-    println("Initial Classification.(+2)..")
-    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  (d1r+d2r+d3r).>1mean(d1r))
-    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  (d1r+d2r+d3r).>1mean(d2r))
-    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, (d1r+d2r+d3r).>1mean(d3r))
-    
-    N = length(d1)
-    if(doPlot)
-        likelyHoodSummaryPlot("Transition Likelyhood(+2)",
-                              d1r, d2r, d3r, ll, 407)
-    end
+    #Create a combined view
 	S::Matrix{Float64}=hcat(F(d1r),F(d2r),F(d3r));
     if(doPlot)
         figure(507);plt.clf();plot(mean(S,2).*median(S,2))
@@ -385,9 +387,6 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     end
 
     #Refine peak sequence
-    Co = (coverLow,    coverMed,    coverHigh)
-    In = (interestLow, interestMed, interestHigh)
-
     S = runPeakIter(Co, In, S, 3, 408)
     S = runPeakIter(Co, In, S, 4, 409)
     S = runPeakIter(Co, In, S, 5, 410)
