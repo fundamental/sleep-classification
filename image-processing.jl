@@ -202,3 +202,19 @@ function doMakeThresholds(SubjectID, workingDir, doPlot)
         plt.hist(hn[:],128)
     end
 end
+    
+"""
+Replace every zone with the image mean
+
+img      - base image
+xedge    - divisions along x axis
+yedge    - divisions along y axis
+operator - reduction operator for a region
+"""
+function zoneify(img::Matrix{Float64}, xedge::Vector{Int}, xedge::Vector{Int}; operator=mean)
+    I = float(copy(img))
+    for yy=1:length(yedge)-1, xx=1:length(xedge)-1
+        I[yedge[yy]:yedge[yy+1],xedge[xx]:xedge[xx+1]] = operator(img[yedge[yy]:yedge[yy+1],xedge[xx]:xedge[xx+1]])
+    end
+    I
+end
