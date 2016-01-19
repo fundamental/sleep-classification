@@ -138,7 +138,8 @@ end
 """
 Get estimate of the likelyhood of a transition between two temporal frames
 """
-function getFreqEst(img, cover, x, gate=nothing)
+function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
+    x::Matrix{Int}, gate::Union{Void,Vector{Float64}}=nothing)
     flush(STDOUT)
     println("getFreqEst...")
     doPlot = false
@@ -147,8 +148,12 @@ function getFreqEst(img, cover, x, gate=nothing)
     sequence_y      = vcat(x[:,3][:],x[:,4][:])
     sequence_scaley = vcat((x[:,2]-x[:,1])[:], (x[:,2]-x[:,1])[:])
 
-    (estx,px) = getSpectralLines(sequence_x, (sequence_scalex.*sequence_scaley).^0.5, size(img)[2], 0)
-    (esty,py) = getSpectralLines(sequence_y, (sequence_scaley.*sequence_scalex).^0.5, size(img)[1], 10)
+    estx::Vector{Float64}
+    esty::Vector{Float64}
+    px::Vector{Float64}
+    py::Vector{Float64}
+    (estx,px) = getSpectralLines(sequence_x, (sequence_scalex.*sequence_scaley).^0.5, size(img,2), baseFig=0)
+    (esty,py) = getSpectralLines(sequence_y, (sequence_scaley.*sequence_scalex).^0.5, size(img,1), baseFig=10)
     if(gate != nothing)
         println("gate.length = ", length(gate));
         println("gate.sum = ",    sum(gate));
@@ -160,11 +165,10 @@ function getFreqEst(img, cover, x, gate=nothing)
     pex = estx.*px
     pey = esty.*py
     py[pey.<sort(pey[py.>0])[round(Int,0.7end)]] = 0
-    #px[pex.<sort(pex[px.>0])[int(0.3end)]] = 0
 
     #Use the prior that variance over frequencies is coarse
     intervalY = find(py)[2:end]-find(py)[1:end-1]
-    Fy = find(py)
+    Fy::Vector{Int} = find(py)
     for i=1:length(intervalY)
         if(intervalY[i] < 20)
             py[Fy[i+1]] = 0
@@ -178,8 +182,8 @@ function getFreqEst(img, cover, x, gate=nothing)
             plot(gate)
         end
     end
-    X = px.*estx
-    Y = py.*esty
+    X::Vector{Float64} = px.*estx
+    Y::Vector{Float64} = py.*esty
 
     Y = identifyInterestBands(cover)
     Y = Y[1:end-1] .!= Y[2:end]
@@ -189,28 +193,6 @@ function getFreqEst(img, cover, x, gate=nothing)
         plt.clf();
         imshow(img,aspect="auto",interpolation="none");
         imshow(log(Z+0.1),aspect="auto",interpolation="none",alpha=0.5)
-    end
-
-    for x=1:length(X), y=1:length(Y)
-        Z[y,x] = max(X[x],Y[y])
-    end
-
-    Z = -Z
-
-    function filterPow(data, filter, dir)
-        mean(mapslices(x->(mean(abs(conv(float64(x[:]),float(filter))))),data, dir))
-    end
-
-    function Normal(x)
-        xx = copy(x)
-        xx -= mean(xx)
-        xx /= (8std(xx))
-        xx -= minimum(xx)
-        xx /= maximum(xx)
-        xx-= 0.5
-        xx*= 2
-        xx[xx.<0] = 0
-        xx
     end
 
     println("Extracting Features")
@@ -241,17 +223,17 @@ function getFreqEst(img, cover, x, gate=nothing)
     feat[10] = float(mapslices(sortperm, feat[5], 1))
 
 
-    diff_sig = zeros(size(feat[1])[2]-1)
+    diff_sig::Vector{Float64} = zeros(size(feat[1],2)-1)
 
     for j=1:20
         for i=1:length(feat)
-            r = kClassify_nway(feat[i], 8, plotID=256, maxiter=20)
+            r::Vector{Int} = kClassify_nway(feat[i], 8, plotID=256, maxiter=20)
             diff_sig_   = r[1:end-1].!=r[2:end]
             diff_sig += diff_sig_#.*estx[1:end-1]#1.0/sum(diff_sig)
         end
     end
 
-    diff_freq = diff_sig.*estx[1:end-1]./sum(estx[1:end-1])
+    diff_freq::Vector{Float64} = diff_sig.*estx[1:end-1]./sum(estx[1:end-1])
 
     (diff_freq, diff_sig, estx[1:end-1])
 end
@@ -281,57 +263,105 @@ function windowedOperator{T}(data::Vector{T}, op, window::Int)
 
 end
 
+function likelyHoodSummaryPlot(title_string::ASCIIString, d1r, d2r, d3r,
+    ll::Vector{Int}, figureId::Int)
+    figure(figureId)
+    plt.clf();
+    title(title_string)
+    println("red mean   = ", mean(d1r[d1r.!=0]))
+    println("blue mean  = ", mean(d2r[d2r.!=0]))
+    println("green mean = ", mean(d3r[d3r.!=0]))
+    scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
+    scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
+    scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
+    scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+end
+
+function runPeakIter(cover::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
+                interest::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
+                S::Matrix{Float64},
+                iterId::Int,
+                plotId::Int)
+
+    println("Initial Classification.(+$iterId)..")
+    peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
+
+    (d1,d1r,er1) = getFreqEst(I, cover[1], interest[1],  peaks)
+    (d2,d2r,er2) = getFreqEst(I, cover[2], interest[2],  peaks)
+    (d3,d3r,er3) = getFreqEst(I, cover[3], interest[3], peaks)
+
+    N = length(d1)
+    if(doPlot)
+        likelyHoodSummaryPlot("Transition Likelyhood(+$iterId)",
+                              d1r, d2r, d3r, ll, plotId)
+    end
+
+	S=hcat(NN(d1r),NN(d2r),NN(d3r));
+    if(doPlot)
+        figure(plotId+100);
+        plt.clf();
+        plot(mean(S,2).*median(S,2))
+        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+    end
+    S
+end
+
 """
 Estimate Which Transitions are likely to be real changepoints
 When in doubt oversegment
 """
-function doLikelyHoodEst(SubjectID, workingDir::ASCIIString, doPlot::Bool)
-    ll = readcsv("$workingDir/Dejunkedlabels$SubjectID.csv")
-    I = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"))
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"))
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"))
+function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
+    ll::Vector{Int}    = readcsv("$workingDir/Dejunkedlabels$SubjectID.csv")
+    I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
+
+    coverLow::Matrix{Float64} = PyPlot.imread("$workingDir/coverlow$SubjectID.png")
+    interestLow::Matrix{Int}  = readcsv("$workingDir/interest$SubjectID-low.csv")
+    coverMed::Matrix{Float64} = PyPlot.imread("$workingDir/covermed$SubjectID.png")
+    interestMed::Matrix{Int}  = readcsv("$workingDir/interest$SubjectID-med.csv")
+    coverHigh::Matrix{Float64}= PyPlot.imread("$workingDir/coverhigh$SubjectID.png")
+    interestHigh::Matrix{Int} = readcsv("$workingDir/interest$SubjectID-high.csv")
+
+    #Define Types
+    d1::Vector{Float64}
+    d1r::Vector{Int}
+    er1::Vector{Float64}
+    d2::Vector{Float64}
+    d2r::Vector{Int}
+    er2::Vector{Float64}
+    d3::Vector{Float64}
+    d3r::Vector{Int}
+    er3::Vector{Float64}
+
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow)
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed)
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh)
     N = length(d1)
     println("Initial Classification...")
     if(doPlot)
-        figure(405)
-        plt.clf();
-        title("Transition Likelyhood(Orig)")
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+        likelyHoodSummaryPlot("Transition Likelyhood(Orig)",
+                              d1r, d2r, d3r, ll, 405)
     end
+
+    #Normalizing Operators
     NN(x) = x./maximum(x)
     F(x)  = NN(windowedOperator(x./maximum(x),maximum,5))
+
+
 	s=hcat(F(d1r),F(d2r),F(d3r));
     if(doPlot)
         figure(505);plt.clf();plot(mean(s,2).*median(s,2))
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
+
     println("Initial Classification.(+1)..")
     ##plt.close("all")
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"),
-    (d1r+d2r+d3r).>1mean(d1r))
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"), 
-    (d1r+d2r+d3r).>1mean(d2r))
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"),
-    (d1r+d2r+d3r).>1mean(d3r))
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  (d1r+d2r+d3r).>1mean(d1r))
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  (d1r+d2r+d3r).>1mean(d2r))
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, (d1r+d2r+d3r).>1mean(d3r))
     N = length(d1)
     if(doPlot)
-        figure(406)
-        plt.clf();
-        title("Transition Likelyhood(+1)")
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+        likelyHoodSummaryPlot("Transition Likelyhood(+1)",
+                              d1r, d2r, d3r, ll, 406)
     end
 	s=hcat(F(d1r),F(d2r),F(d3r));
     if(doPlot)
@@ -339,154 +369,50 @@ function doLikelyHoodEst(SubjectID, workingDir::ASCIIString, doPlot::Bool)
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
     println("Initial Classification.(+2)..")
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"),
-    (d1r+d2r+d3r).>1mean(d1r))
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"), 
-    (d1r+d2r+d3r).>1mean(d2r))
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"),
-    (d1r+d2r+d3r).>1mean(d3r))
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  (d1r+d2r+d3r).>1mean(d1r))
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  (d1r+d2r+d3r).>1mean(d2r))
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, (d1r+d2r+d3r).>1mean(d3r))
     
     N = length(d1)
     if(doPlot)
-        figure(407)
-        plt.clf();
-        title("Transition Likelyhood(+2)")
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+        likelyHoodSummaryPlot("Transition Likelyhood(+2)",
+                              d1r, d2r, d3r, ll, 407)
     end
-	S=hcat(F(d1r),F(d2r),F(d3r));
+	S::Matrix{Float64}=hcat(F(d1r),F(d2r),F(d3r));
     if(doPlot)
         figure(507);plt.clf();plot(mean(S,2).*median(S,2))
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
 
-    println("Initial Classification.(+3)..")
-    peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
-    println(sum(peaks))
-    println(peaks)
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"),
-    peaks)
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"), 
-    peaks)
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"),
-    peaks)
-    N = length(d1)
-    if(doPlot)
-        figure(408)
-        plt.clf();
-        title("Transition Likelyhood(+3)")
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
-	S=hcat(NN(d1r),NN(d2r),NN(d3r));
-    if(doPlot)
-        figure(508);plt.clf();plot(mean(S,2).*median(S,2))
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
+    #Refine peak sequence
+    Co = (coverLow,    coverMed,    coverHigh)
+    In = (interestLow, interestMed, interestHigh)
+
+    S = runPeakIter(Co, In, S, 3, 408)
+    S = runPeakIter(Co, In, S, 4, 409)
+    S = runPeakIter(Co, In, S, 5, 410)
     
-    peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
-    println("Initial Classification.(+4)..")
-    #println(size(peaks))
-    #println(size((mean(S,2).*median(S,2)) .< 0.02))
-    peaks[find((mean(S,2).*median(S,2)) .< 0.02)] = false
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"),
-    peaks)
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"), 
-    peaks)
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"),
-    peaks)
-    N = length(d1)
-    if(doPlot)
-        figure(409)
-        plt.clf();
-        title("Transition Likelyhood(+4)")
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
-	S=hcat(NN(d1r),NN(d2r),NN(d3r));
-    if(doPlot)
-        figure(509);plt.clf();plot(mean(S,2).*median(S,2))
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
-    
-    
-    
-    peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
-    println("Initial Classification.(+5)..")
-    #println(size(peaks))
-    #println(size((mean(S,2).*median(S,2)) .< 0.02))
-    peaks[find((mean(S,2).*median(S,2)) .< 0.02)] = false
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"),
-    peaks)
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"), 
-    peaks)
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"),
-    peaks)
-    N = length(d1)
-    if(doPlot)
-        figure(410)
-        plt.clf();
-        title("Transition Likelyhood(+5)")
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
-	S=hcat(NN(d1r),NN(d2r),NN(d3r));
-    if(doPlot)
-        figure(510);plt.clf();plot(mean(S,2).*median(S,2))
-        title("Transition Likelyhood(+5)")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
-    end
-    
+    #Last iteration inline
     peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
     println("Initial Classification.(+6)..")
-    #println(size(peaks))
-    #println(size((mean(S,2).*median(S,2)) .< 0.02))
     peaks[find((mean(S,2).*median(S,2)) .< 0.02)] = false
-    (d1,d1r,er1) = getFreqEst(I, PyPlot.imread("$workingDir/coverlow$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-low.csv"),
-    peaks)
-    (d2,d2r,er2) = getFreqEst(I, PyPlot.imread("$workingDir/covermed$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-med.csv"), 
-    peaks)
-    (d3,d3r,er3) = getFreqEst(I, PyPlot.imread("$workingDir/coverhigh$SubjectID.png"), readcsv("$workingDir/interest$SubjectID-high.csv"),
-    peaks)
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  peaks)
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  peaks)
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, peaks)
+
     if(doPlot)
-        figure(411)
-        plt.clf();
-        title("Transition Likelyhood(+6)")
-        N = length(d1)
-        println("red mean   = ", mean(d1r[d1r.!=0]))
-        println("blue mean  = ", mean(d2r[d2r.!=0]))
-        println("green mean = ", mean(d3r[d3r.!=0]))
-        scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
-        scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
-        scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
-        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+        likelyHoodSummaryPlot("Transition Likelyhood(+6)",
+                              d1r, d2r, d3r, ll, 411)
     end
+
 	S=hcat(NN(d1r),NN(d2r),NN(d3r));
+
     if(doPlot)
         figure(511);plt.clf();plot(mean(S,2).*median(S,2))
         title("Transition Likelyhood(+6)")
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
+
     writecsv("$workingDir/likelyhood$SubjectID-low.csv", d1)
     writecsv("$workingDir/likelyhood$SubjectID-med.csv", d2)
     writecsv("$workingDir/likelyhood$SubjectID-high.csv",d3)
@@ -497,23 +423,9 @@ function doLikelyHoodEst(SubjectID, workingDir::ASCIIString, doPlot::Bool)
     writecsv("$workingDir/edgeRate$SubjectID-med.csv", er2)
     writecsv("$workingDir/edgeRate$SubjectID-high.csv",er3)
     writecsv("$workingDir/edgeParameter$SubjectID.csv", S)
-    ##figure(401)
-    ##plt.clf();
-    ##title("Transition Likelyhood")
-    ##imshow(hcat(d1,d2,d3)',aspect="auto",interpolation="none")
-    #figure(402)
-    #plt.clf();
-    #title("Transition Likelyhood")
-    #N = length(d1)
-    #println("red mean   = ", mean(d1r[d1r.!=0]))
-    #println("blue mean  = ", mean(d2r[d2r.!=0]))
-    #println("green mean = ", mean(d3r[d3r.!=0]))
+
     D1 = windowedOperator(d1r./maximum(d1r),maximum,5);
     D2 = windowedOperator(d2r./maximum(d1r),maximum,5);
     D3 = windowedOperator(d3r./maximum(d1r),maximum,5);
-    #scatter(1:N, 10*D1, marker=".", color="r")
-    #scatter(1:N, 10*D2, marker=".", color="g")
-    #scatter(1:N, 10*D3, marker=".", color="b")
-    #scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
 end
 
