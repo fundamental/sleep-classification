@@ -1,19 +1,19 @@
 using Images
 using PyPlot
 
-getX(img) = size(img)[2]
-getY(img) = size(img)[1]
+getX{T}(img::Matrix{T}) = size(img,2)
+getY{T}(img::Matrix{T}) = size(img,1)
 
 """
 Get the pixel value at x,y extending the image for out of bounds values
 """
-px(img, x, y) = img[Int(max(1,min(getY(img),y))), Int(max(1,min(getX(img),x)))]
+px{T}(img::Matrix{T}, x::Int, y::Int) = img[Int(max(1,min(getY(img),y))), Int(max(1,min(getX(img),x)))]
 
 """
 Apply a 3x3 median window to the image
 """
-function Median3(img)
-    result = copy(img)
+function Median3{T}(img::Matrix{T})
+    result::Matrix{T} = copy(img)
 
     for x=1:getX(img), y=1:getY(img)
         opts = [
@@ -33,11 +33,11 @@ Arguments:
 - img - the 2D Image
 - med - the size (N) of the median window
 """
-function GeneralMedian(img, med)
+function GeneralMedian{T}(img::Matrix{T}, med::Int)
     #return img
     @assert isodd(med)
-    scale = (med-1)/2
-    result = copy(img)
+    scale::Int        = (med-1)/2
+    result::Matrix{T} = copy(img)
 
     for x=1:getX(img), y=1:getY(img)
         opts = Float64[]
@@ -53,7 +53,7 @@ end
 """
 Apply the 3x3 median until the input has approximately converged
 """
-function recursiveMedian(img)
+function recursiveMedian{T}(img::Matrix{T})
     for i=1:20
         img = Median3(img)
     end
@@ -61,7 +61,7 @@ function recursiveMedian(img)
 end
 
 #zero mean and 2nd std is at +-1
-function histNormalize(img)
+function histNormalize(img::Matrix{Float64})
     t = img-mean(img)
     t./(3*std(t))
 end
@@ -71,17 +71,17 @@ Get mask over image s.t.
 out[a,b] = 1 if low < in[a,b] < high
            0 otherwise
 """
-function threshold(img, low, high)
+function threshold{T,N}(img::Array{T,N}, low::T, high::T)
     t = copy(img)
     t[img.>low] = 1
     t[img.<low]  = 0
     t[img.>high] = 0
     t
 end
- 
 
 
-function labelClusters(img)
+
+function labelClusters(img::Matrix{Float64})
     function labelRow(row)
         i=0
         rowLabel = zeros(length(row))
@@ -166,15 +166,9 @@ end
 """
 Generate thresholded versions of the input image
 """
-function doMakeThresholds(SubjectID, workingDir, doPlot)
-    I = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
+function doMakeThresholds(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
+    I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 
-    #figure(1)
-    #imshow(I, aspect="auto", interpolation="none")
-    #
-    #figure(2)
-    #imshow(Median3(I), aspect="auto", interpolation="none")
-    #
     rmed = recursiveMedian(I)
     if(doPlot)
         figure(201)
@@ -193,6 +187,7 @@ function doMakeThresholds(SubjectID, workingDir, doPlot)
     combined[:,:,1] = high
     combined[:,:,2] = med
     combined[:,:,3] = low
+
     if(doPlot)
         figure(202)
         title("Regions")
@@ -201,8 +196,10 @@ function doMakeThresholds(SubjectID, workingDir, doPlot)
         title("Histogram")
         plt.hist(hn[:],128)
     end
+
+    nothing
 end
-    
+
 """
 Replace every zone with the image mean
 
@@ -211,7 +208,7 @@ xedge    - divisions along x axis
 yedge    - divisions along y axis
 operator - reduction operator for a region
 """
-function zoneify(img::Matrix{Float64}, xedge::Vector{Int}, xedge::Vector{Int}; operator=mean)
+function zoneify(img::Matrix{Float64}, xedge::Vector{Int}, yedge::Vector{Int}; operator=mean)
     I = float(copy(img))
     for yy=1:length(yedge)-1, xx=1:length(xedge)-1
         I[yedge[yy]:yedge[yy+1],xedge[xx]:xedge[xx+1]] = operator(img[yedge[yy]:yedge[yy+1],xedge[xx]:xedge[xx+1]])

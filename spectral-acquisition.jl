@@ -10,9 +10,9 @@ Import Data from a HDF5 Serialization
 These files are derived the original .edf files supplied from the DREAMS
 database
 """
-function import_data(SubjectID)
+function import_data(SubjectID::Int)
     f = HDF5.h5open("/home/mark/current/general-sleep/subject$SubjectID.h5")
-    DataSet = read(f["2"])
+    DataSet::Vector{Float64} = read(f["2"])
     close(f)
     println("Dataset is ", length(DataSet), " elements")
     DataSet
@@ -21,7 +21,7 @@ end
 """
 Obtain the raw spectra from SubjectID
 """
-function raw_spec(SubjectID)
+function raw_spec(SubjectID::Int)
     DD = import_data(SubjectID)
     figure(999)
     (Spectra,_) = specgram(DD, 4096, 100, noverlap=0)
@@ -32,7 +32,7 @@ end
 """
 Generate the spectral image
 """
-function generate_spectra(DataSet, SubjectID, doPlot)
+function generate_spectra(DataSet::Vector{Float64}, SubjectID::Int, doPlot::Bool)
     figure(101)
     (Spectra,_) = specgram(DataSet, 4096, 100, noverlap=0)
     Spectra = log(abs(Spectra))
@@ -44,12 +44,8 @@ function generate_spectra(DataSet, SubjectID, doPlot)
     end
     Spectra = mapslices(x->x-sort(x)[floor(Int,end/2)], Spectra, 1)
     Spectra = mapslices(x->x-sort(x)[floor(Int,end/2)], Spectra, 2)
-    #Spectra = mapslices(x->x./norm(sort(x)[floor(end/2)]), Spectra, 2)
     Spectra -= minimum(Spectra)
     Spectra /= mean(Spectra)
-    #Spectra = log(abs(Spectra))
-    #Spectra = downsample(Spectra, 8)
-    #spectra = mapslices(x->sort(x), spectra, 2)
     LSpectra = log(Spectra)
     if(sum(LSpectra.<-10) > 0)
         LSpectra[LSpectra.<-10] = minimum(LSpectra[LSpectra.>-10][:])
@@ -70,19 +66,7 @@ function generate_spectra(DataSet, SubjectID, doPlot)
         vmin=Smin, vmax=Smax, cmap=gray())
         title("Normalized Spectra")
     end
-    #figure(102)
-    #plt.clf()
-    #imshow(LSpectra[100:end,:], aspect="auto", interpolation="none",
-    #vmin=Lmin, vmax=Lmax, cmap=gray())
-    #title("Normalized Log Spectra")
-    #figure(103)
-    #plt.clf()
-    #plt.hist(Spectra[:],256)
-    #figure(104)
-    #plt.clf()
-    #plt.hist(LSpectra[:],256)
     Images.imwrite(convert(Array{Ufixed16},Spectra./maximum(Spectra)), "Spectra$SubjectID.png")
-    #Images.imwrite(log(Spectra), "LSpectra$SubjectID.png")
     (Spectra, LSpectra)
 end
 
@@ -107,12 +91,9 @@ end
 """
 Eliminate series of outliers in the data
 """
-function robustSpikeElimination(Spectra)
+function robustSpikeElimination(Spectra::Matrix{Float64})
     excitation = sum((Spectra[:,1:end-1].-Spectra[:,2:end]).^2,1)[:]
     ex = refold(excitation)
-    #figure(105);
-    #plt.clf()
-    #plot(excitation)
 
     minmean = Inf
     minstd  = Inf
@@ -132,17 +113,7 @@ function robustSpikeElimination(Spectra)
             minelms = i
         end
         push!(tmp, s)
-        #println(i, " m=", m, " s=", s, " ?=",sum(samples.^2)/2-(sum(samples)/2).^2)
     end
-    #figure(105);
-    #plot([1:N],ones(N)*(minmean+1.5minstd), color="red")
-    #figure(106);
-    #plt.clf();
-    #plot(tmp)
-    #figure(107);
-    #plt.clf()
-    #plot(excitation)
-    #plt.hist(excitation,128)
     println("Excluding ", sum(excitation.>(minmean+1.5minstd)), " Elements...")
     println("Of Total Possible ", size(Spectra)[2], "...")
     mixed = zeros(N)
@@ -168,7 +139,7 @@ Arguments:
 - workingDir - the directory to save intermediate data to
 - doPlot     - plot intermediate results
 """
-function runAquisition(SubjectID, workingDir, doPlot)
+function runAquisition(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     Data = import_data(SubjectID)
     (Spectra, LSpectra) = generate_spectra(Data, SubjectID, doPlot)
     (goodElms,seq) = robustSpikeElimination(Spectra)
@@ -179,11 +150,6 @@ function runAquisition(SubjectID, workingDir, doPlot)
         imshow(Spectra[1:end,goodElms], aspect="auto", interpolation="none",
         cmap=gray())
     end
-
-    #figure(109)
-    #plt.clf()
-    #imshow(Spectra, aspect="auto", interpolation="none",
-    #cmap=gray())
 
     Images.imwrite(convert(Array{Ufixed16},Spectra[:,goodElms]./maximum(Spectra[:,goodElms])),
     "$workingDir/DejunkedSpectra$SubjectID.png")
@@ -203,14 +169,3 @@ function runAquisition(SubjectID, workingDir, doPlot)
     end
     writecsv("$workingDir/Dejunkedlabels$SubjectID.csv", dejunked_labels)
 end
-
-#Run The Results Through the sobal operator
-
-#Save
-
-#Manually Tweak With Gimp
-# equalize
-# median
-# normalization
-# something else?
-
