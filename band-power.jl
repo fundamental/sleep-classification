@@ -92,23 +92,3 @@ function load_all()
 
     (C,L)
 end
-
-
-function make_conf(A::Vector{Int},B::Vector{Int},values::Vector{Int})
-    N    = length(values)
-    conf = zeros(N,N)
-    rm   = Dict{Any, Int}() #Remapper
-    for i=1:N
-        rm[values[i]] = i
-    end
-
-    M = length(A)
-    for j=1:M
-        a = A[j]
-        b = B[j]
-        if(a in values && b in values)
-            conf[rm[a], rm[b]] += 1
-        end
-    end
-    conf
-end
