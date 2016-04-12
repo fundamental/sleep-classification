@@ -1,10 +1,16 @@
 using Images
 using PyPlot
 
+"""
+Calculate the area of a given rectangle
+"""
 function area(rect::Vector{Int})
     abs(1+rect[2]-rect[1])*abs(1+rect[4]-rect[3])
 end
 
+"""
+Identify if a rectangle is within the bounds of a given image
+"""
 function inbounds(rect::Vector{Int}, img::BitArray{2})
     t1 = rect[1] < 4 || rect[2] < 4 || rect[3] < 4 || rect[4] < 4
     c2 = size(img,2)-2
@@ -15,6 +21,9 @@ function inbounds(rect::Vector{Int}, img::BitArray{2})
     !(t1 || t2 || t3)
 end
 
+"""
+Count the positive pixels within a rectangle
+"""
 function rawScore(rect::Vector{Int}, img)
     score = 0
     for r=rect[3]:rect[4], c=rect[1]:rect[2]
@@ -23,6 +32,10 @@ function rawScore(rect::Vector{Int}, img)
     score
 end
 
+"""
+Produce a value to represent how good a candidate rectangle is
+Larger values are better
+"""
 function score(rect::Vector{Int},img)
     if(!inbounds(rect,img))
         return -1000
@@ -31,9 +44,16 @@ function score(rect::Vector{Int},img)
     raw - 2abs(raw-area(rect))
 end
 
+"""
+Identify when a rectangle has a valid initialization
+"""
 function validInit(rect::Vector{Int},img::BitArray{2})
     inbounds(rect, img) && rawScore(rect,img) == area(rect)
 end
+
+"""
+Create a random initialization which may or may not be valid
+"""
 function randInit(img)
     y = rand(1:size(img,1))
     x = rand(1:size(img,2))
@@ -41,7 +61,11 @@ function randInit(img)
 end
 
 #rectangle [x0,x1,y0,y1]
-function within(rect::Vector{Int}, prev)
+"""
+Identify if a rectangle is within an instance of a rectangle from another set of
+    rectangles
+"""
+function within(rect::Vector{Int}, prev::Vector{Vector{Int}})
     r = rect
     for i=prev
         if(i[1]<=r[1] && i[2]>=r[2] && i[3]<=r[3] && i[4]>=r[4])
@@ -52,6 +76,13 @@ function within(rect::Vector{Int}, prev)
     false
 end
 
+"""
+Ensure that a rectangle vector R=[a, b, c, d]
+maintains the property
+
+R.a <= R.b
+R.c <= R.d
+"""
 function fixRect(rect::Vector{Int})
     if(rect[1]>rect[2])
         fixRect(rect[[2,1,3,4]])
@@ -62,10 +93,12 @@ function fixRect(rect::Vector{Int})
     end
 end
 
-#R1 is the old rectangle
-#R2 is the new rectangle
-#Return the differing rectangle
-#Return a negative sign if it's lost area
+"""
+R1 is the old rectangle
+R2 is the new rectangle
+Return the differing rectangle
+Return a negative sign if it's lost area
+"""
 function deltaRect(r1::Vector{Int}, r2::Vector{Int})
     #println("deltaRect(",r1,",",r2,")")
     sign_ = area(r1)<area(r2) ? 1 : -1
@@ -85,26 +118,29 @@ function deltaRect(r1::Vector{Int}, r2::Vector{Int})
     end
 end
 
-function scoreRect(img, r1::Vector{Int}, s1::Int, r2::Vector{Int})
-    #println("scoreRect()")
+"""
+Generate a score for a rectangle on a given image
+    a previous rectangle score is used to speed up the process
+"""
+function scoreRect(img::BitArray{2}, r1::Vector{Int}, s1::Int, r2::Vector{Int})
     if(r1 == r2)
         s1
     else
-        #println("Doing Math...")
         (sign_, delta) = deltaRect(r1,r2)
-        #println("sign=",sign_)
-        #println("delta=",delta)
         s1 + sign_*score(delta,img)
     end
 end
 
-
+"""
+Generate a candidate rectangle from a binary image and a collection of
+previously generated rectangles
+"""
 function generateRect(img::BitArray{2}, prev::Vector{Vector{Int}})
-    while true
+    for iters=1:100
         #print(".")
         #get a random initialization point
         rect = Int[0,0,0,0]
-        while(!validInit(rect,img) && !within(rect,prev))
+        while(!validInit(rect,img))# && !within(rect,prev))
             rect = randInit(img)
             #println("rect = ", rect)
         end
@@ -145,15 +181,23 @@ function generateRect(img::BitArray{2}, prev::Vector{Vector{Int}})
             return rect
         end
     end
+    nothing
 end
 
 #Solve the Approximate Set Cover Problem Greedly
-function intervalIntersect(l1,l2)
+
+"""
+Identify when two intervals overlap
+"""
+function intervalIntersect(l1::Vector{Int},l2::Vector{Int})
     #Avoiding intersection means that l1[*]>l2[*] || l1[*]<l2[*]
     !(l1[2] < l2[1] || l1[1]>l2[2])
 end
 
-function intersect(r1, r2)
+"""
+Identify when rectangles intersect
+"""
+function intersect(r1::Vector{Int}, r2::Vector{Int})
     intervalIntersect(r1[1:2],r2[1:2]) && intervalIntersect(r1[3:4],r2[3:4])
 end
 
@@ -170,17 +214,31 @@ function calculateCover(Cover, rect, prev, damage)
     end
     score_ + 50*score_/area(rect)
 end
-    
-function rectSegment(Img, figNum=100, doPlot=false)
+
+"""
+Perform rectangle segmentation on an input image
+
+output - a collection of rectangles in the form
+[[x1 x2 y1 y2]
+ [x1 x2 y1 y2]
+ .
+ .
+ .
+ [x1 x2 y1 y2]]
+"""
+function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
     R = Vector{Vector{Int}}()
     tic()
     for i=1:1024
         nx = generateRect(Img,R)
+        if(nx == nothing)
+            break
+        end
         if(within(nx, R))
             print("!!!")
         end
         push!(R, nx)
-        
+
         print("*")#;area(R[end]))
     end
     toc()
@@ -270,7 +328,7 @@ function rectSegment(Img, figNum=100, doPlot=false)
     result
 end
 
-function doRectSegment(SubjectID, state, figNum, workingDir, doPlot)
+function doRectSegment(SubjectID::Int, state::ASCIIString, figNum::Int, workingDir::ASCIIString, doPlot::Bool)
     #File = "before-labeling.png"
     #File = "real-example.png"
     ##File = "real-example2.png"
@@ -288,8 +346,15 @@ function doRectSegment(SubjectID, state, figNum, workingDir, doPlot)
     writecsv("$workingDir/interest$SubjectID-$state.csv", hcat(result...)')
 end
 
+"""
+Identify the space that a collection of rectangles cover
 
-function findCover(sz, R)
+sz - input matrix size
+R  - collection of input rectangles
+
+outputs a binary image indicating if a rectangle covers a pixel or not
+"""
+function findCover(sz::Tuple{Int,Int}, R::Vector{Vector{Int}})
     I = zeros(sz)#copy(Img)
     I[:,:] = 0
     total_area = 0
@@ -302,4 +367,61 @@ function findCover(sz, R)
         end
     end
     I
+end
+
+
+function demo_cover()
+
+    sz = (800,800)
+    rects = Vector{Int}[]
+    push!(rects,[8,20,100,500])
+    push!(rects,[400,500,450,700])
+    push!(rects,[600,700,450,550])
+    push!(rects,[100,450,200,280])
+
+
+    cover = findCover(sz, rects)
+
+    c2    = cover+1.0randn(sz)
+    c2    = c2.>0.3
+
+    R = rectSegment(c2, 100, true)
+
+    c3    = findCover(sz, R)
+
+    rpow = zeros(sz[1])
+    cpow = zeros(sz[2])
+    for r=R
+        rpower = abs(r[2]-r[1])
+        cpower = abs(r[4]-r[3])
+        cpow[r[1]] += cpower
+        cpow[r[2]] += cpower
+        rpow[r[3]] += rpower
+        rpow[r[4]] += rpower
+    end
+
+    seg_likelyhood = zeros(sz)
+    for i=1:sz[1],j=1:sz[2]
+        seg_likelyhood[i,j] = rpow[i] + cpow[j]
+    end
+
+    figure(1)
+    imshow(cover)
+
+    figure(2)
+    imshow(c2)
+
+    figure(3)
+    imshow(c3)
+
+    figure(4)
+    imshow(seg_likelyhood)
+
+    figure(5)
+    imshow(cov(cover))
+    figure(6)
+    imshow(cov(c2))
+    figure(7)
+    imshow(cov(c3))
+
 end
