@@ -18,7 +18,7 @@ Extract the level of cross frequency coupling between two frequency bands
 """
 function extract_cfc(x::Vector{Float64}, fs::Float64, l::Vector{Float64}, h::Vector{Float64})
     SN = length(x)#4096*32
-    window_sec = 120
+    window_sec = 30
     period = 200*window_sec
 
     fl1 = digitalfilter(Bandpass((h*2.0./fs)...), Butterworth(16))
@@ -30,7 +30,7 @@ function extract_cfc(x::Vector{Float64}, fs::Float64, l::Vector{Float64}, h::Vec
     Y1::Vector{Float64} = abs(hilbert(y1))
     Y2::Vector{Float64} = angle(hilbert(y2))
 
-    N::Int     = 32
+    N::Int     = 256
     M          = floor(Int, SN/period)
     bins       = zeros(N,M)
     bins_count = zeros(N,M)
