@@ -2,7 +2,6 @@ using PyPlot
 using ProgressMeter
 using Clustering
 
-
 """
 Identify Local Maxima
 """
@@ -137,6 +136,12 @@ end
 
 """
 Get estimate of the likelyhood of a transition between two temporal frames
+
+Arguments:
+img   - underlying spectral image
+cover - rectangluar approximation of spectral image
+x     - rectangluar regions approximating spectral image
+gate  - Function pruning unwanted mode transitions
 """
 function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     x::Matrix{Int}, gate::Union{Void,Vector{Float64}}=nothing)
@@ -277,14 +282,19 @@ function likelyHoodSummaryPlot(title_string::ASCIIString, d1r, d2r, d3r,
     scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
 end
 
-function runIndependentIter(cover::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
-                interest::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
-                iterId::Int,
-                plotId::Int)
+Img3 = Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}}
+
+"""
+Run iteration of temporal mode estimation
+Arguments
+cover - 
+
+"""
+function runIndependentIter(cover::Img3, interest::Img3, iterId::Int, plotId::Int)
     println("Initial Classification.(+$iterId)..")
-    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  (d1r+d2r+d3r).>1mean(d1r))
-    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  (d1r+d2r+d3r).>1mean(d2r))
-    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, (d1r+d2r+d3r).>1mean(d3r))
+    (d1,d1r,er1) = getFreqEst(I, cover[1],  interest[1], (d1r+d2r+d3r).>1mean(d1r))
+    (d2,d2r,er2) = getFreqEst(I, cover[2],  interest[2], (d1r+d2r+d3r).>1mean(d2r))
+    (d3,d3r,er3) = getFreqEst(I, cover[3],  interest[3], (d1r+d2r+d3r).>1mean(d3r))
     
     N = length(d1)
     if(doPlot)
@@ -301,8 +311,10 @@ function showCombined(s, N, ll, doPlot, plotId)
     end
 end
 
-function runPeakIter(cover::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
-                interest::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}},
+"""
+Estimate the peaks of where mode transitions are the most likely
+"""
+function runPeakIter(cover::Img3, interest::Img3,
                 S::Matrix{Float64},
                 iterId::Int,
                 plotId::Int)
@@ -310,8 +322,8 @@ function runPeakIter(cover::Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64
     println("Initial Classification.(+$iterId)..")
     peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
 
-    (d1,d1r,er1) = getFreqEst(I, cover[1], interest[1],  peaks)
-    (d2,d2r,er2) = getFreqEst(I, cover[2], interest[2],  peaks)
+    (d1,d1r,er1) = getFreqEst(I, cover[1], interest[1], peaks)
+    (d2,d2r,er2) = getFreqEst(I, cover[2], interest[2], peaks)
     (d3,d3r,er3) = getFreqEst(I, cover[3], interest[3], peaks)
 
     N = length(d1)
@@ -428,3 +440,6 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     D3 = windowedOperator(d3r./maximum(d1r),maximum,5);
 end
 
+
+function demo_xy_modality()
+end
