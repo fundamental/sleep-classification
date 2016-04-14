@@ -25,7 +25,7 @@ end
 Count the positive pixels within a rectangle
 """
 function rawScore(rect::Vector{Int}, img)
-    score = 0
+    score::Int = 0
     for r=rect[3]:rect[4], c=rect[1]:rect[2]
         score += img[r,c]
     end
@@ -136,7 +136,7 @@ Generate a candidate rectangle from a binary image and a collection of
 previously generated rectangles
 """
 function generateRect(img::BitArray{2}, prev::Vector{Vector{Int}})
-    for iters=1:100
+    for iters=1:30
         #print(".")
         #get a random initialization point
         rect = Int[0,0,0,0]
@@ -149,11 +149,12 @@ function generateRect(img::BitArray{2}, prev::Vector{Vector{Int}})
         #TODO this can be optimized as
         #the delta score can be calculated rather than the total score each time
         tmp = Int[0,0,0,0]
-        for i=1:1000
+        oldScore = score(rect, img)
+        for i=1:2000
             bestExpand::Int = 0
             bestDir::Int    = 0
             bestDelta::Int  = 0
-            oldScore = score(rect,img)
+            #oldScore = score(rect,img)
             for dir=1:4
                 for delta=[(-1:1);]
                     tmp[:] = rect[:]
@@ -173,6 +174,7 @@ function generateRect(img::BitArray{2}, prev::Vector{Vector{Int}})
             if(bestDelta == 0)
                 break
             end
+            oldScore = bestExpand
             rect[bestDir] += bestDelta
             #print("&")
         end
@@ -228,8 +230,8 @@ output - a collection of rectangles in the form
 """
 function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
     R = Vector{Vector{Int}}()
-    tic()
-    for i=1:1024
+    #tic()
+    for i=1:4096
         nx = generateRect(Img,R)
         if(nx == nothing)
             break
@@ -241,7 +243,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
 
         print("*")#;area(R[end]))
     end
-    toc()
+    #toc()
 
 
     calculateInitialCover(rect)=area(rect)
@@ -251,6 +253,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
     position = Array(Int, length(R))
     position[:] = 2000
     scores   = Array(Float64, length(R))
+    println("available rectangles = ", length(R))
     for i=1:length(R)
         scores[i] = calculateInitialCover(R[i])
     end
@@ -263,7 +266,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
     #by the previous value
     #Thus a zero element is zero for all future calc
     for i=1:400
-        print("*")
+        print("=")
         for j=1:length(R)
             scores[j] = calculateCover(Cover, R[j], scores[j], damageRect)
         end
@@ -302,7 +305,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
         end
     end
     real_area = sum(I.== 1)
-    figure(101)
+    figure(figNum+1)
     PyPlot.clf();
     imshow(I, aspect="auto",interpolation="none")
     println("Total Area = ", total_area)
@@ -423,5 +426,114 @@ function demo_cover()
     imshow(cov(c2))
     figure(7)
     imshow(cov(c3))
+end
 
+function seg_likely(sz, R)
+    rpow = zeros(sz[1])
+    cpow = zeros(sz[2])
+    for r=R
+        rpower = abs(r[2]-r[1])
+        cpower = abs(r[4]-r[3])
+        cpow[r[1]] += cpower
+        cpow[r[2]] += cpower
+        rpow[r[3]] += rpower
+        rpow[r[4]] += rpower
+    end
+
+    seg_likelyhood = zeros(sz)
+    for i=1:sz[1],j=1:sz[2]
+        seg_likelyhood[i,j] = rpow[i] + cpow[j]
+    end
+    seg_likelyhood
+end
+
+#FOR SYNTHETIC DATA ONLY
+function seg_true(sz, synth)
+    rpow = zeros(sz[1])
+    cpow = zeros(sz[2])
+    for i=2:sz[1]
+        if(synth[i-1,:] != synth[i,:])
+            rpow[i] = 1
+        end
+    end
+    for i=2:sz[2]
+        if(synth[:,i-1] != synth[:,i])
+            cpow[i] = 1
+        end
+    end
+
+    seg_likelyhood = zeros(sz)
+    for i=1:sz[1],j=1:sz[2]
+        seg_likelyhood[i,j] = rpow[i] + cpow[j]
+    end
+    seg_likelyhood
+end
+
+function demo_triple_cover(seed=rand(Int64))
+    println("seed = ", seed)
+    srand(seed)
+
+
+    sz = (800,1200)
+    general_noise_level = 1.0
+    sparse_noise_level  = 3.0
+    sparse_noise_cnt    = 0.75
+
+
+    data_raw      = make_irregular_grid(height=sz[1], width=sz[2])
+    general_noise = general_noise_level*randn(sz...)
+    sparse_noise  = zeros(sz...)
+
+    for i=1:length(sparse_noise)
+        sparse_noise[i] += (sparse_noise_cnt > rand()) ?
+        sparse_noise_level*randn() : 0
+    end
+    
+    data_in = data_raw + general_noise + sparse_noise
+    din_med = recursiveMedian(data_in)
+
+    lvl_low = din_med .< -0.5
+    lvl_med = (din_med .> -0.7) & (din_med .< 0.7)
+    lvl_hgh = din_med .> 0.5
+
+    Rlow = rectSegment(lvl_low, 100, false)
+    Rmed = rectSegment(lvl_med, 200, false)
+    Rhgh = rectSegment(lvl_hgh, 300, false)
+
+
+    figure(1);PyPlot.clf();
+    imshow(data_raw,aspect="auto",interpolation="none");title("underlying model")
+
+    
+    figure(2);PyPlot.clf();
+    imshow(data_in,aspect="auto",interpolation="none");title("model + noise")
+    
+    figure(3);PyPlot.clf();
+    imshow(din_med,aspect="auto",interpolation="none");title("model + noise + median")
+
+    figure(4);PyPlot.clf();
+    imshow(hcat(lvl_low, lvl_med, lvl_hgh));title("perceived levels")
+
+    figure(5);PyPlot.clf();
+    imshow(hcat(findCover(sz, Rlow), findCover(sz,Rmed), findCover(sz,Rhgh)));
+
+    figure(6);PyPlot.clf();
+    imshow(hcat(seg_likely(sz, Rlow), seg_likely(sz, Rmed), seg_likely(sz,Rhgh)));
+    title("seg likelyhood")
+    
+    figure(7);PyPlot.clf();
+    imshow(seg_likely(sz, Rlow)+seg_likely(sz, Rmed)+seg_likely(sz,Rhgh),aspect="auto",interpolation="none");
+
+    figure(8);PyPlot.clf()
+    imshow(seg_true(sz, data_raw), aspect="auto", interpolation="none")
+
+    figure(9);PyPlot.clf()
+    imshow(findCover(sz,Rhgh)-findCover(sz,Rlow),aspect="auto",interpolation="none")
+
+    figure(10);PyPlot.clf();
+    plt[:hist](data_raw[:], 128)
+    figure(11);PyPlot.clf();
+    plt[:hist](data_in[:], 128)
+    figure(12);PyPlot.clf();
+    plt[:hist](din_med[:], 128)
 end
