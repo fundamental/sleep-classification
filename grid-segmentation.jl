@@ -558,3 +558,123 @@ function demo_xy_modality(seed=0)
     (r,c,a,b) = grid_seg(data, cover, rects)
     return (r,c,ground,noise,a,b)
 end
+
+rms(x) = sqrt(mean(x[:].^2))
+getinds(x,thr) = vcat(1, find(x.>thr), length(x))
+
+function cleanup_seg(ground, data, r, c)
+    vars = length(c)+length(r)-4
+
+    println(vars, " variables to optimize over")
+    init     = zoneify(data, c, r, operator=mean)
+    err_init = rms(data.-init)
+    err_true = rms(ground.-init)
+    figure(666);PyPlot.clf();imshow((ground.-init).^2)
+    clim(-4,4)
+    perturb = zeros(7,length(c)-2)
+    for i=1:length(c)-2, j=1:7
+        shift = j-4
+        if(shift == 0)
+            perturb[j,i] = err_init
+        else
+            cp       = copy(c)
+            cp[i+1] += shift
+            if(cp[i+1]>=size(data,2) || cp[i+1] < 1)
+                perturb[j,i] = err_init+0.1
+            else
+                rep      = zoneify(data, cp, r, operator=mean)
+                err      = rms(data.-rep)
+                perturb[j,i] = err
+            end
+        end
+    end
+    println("Initial error = ", err_init)
+    println("Real    error = ", err_true)
+    best = minimum(perturb[:])
+    perturb_vec = mapslices(indmin, perturb, 1)[:]
+    c[2:end-1] += perturb_vec.-4
+    rep_out  = zoneify(data, c, r, operator=mean)
+    err_out  = rms(data.-rep_out)
+    err_outt = rms(ground.-rep_out)
+    println("Mid Data    error = ", err_out)
+    println("Mid Real    error = ", err_outt)
+    
+    init     = zoneify(data, c, r, operator=mean)
+    err_init = rms(data.-init)
+    err_true = rms(ground.-init)
+    #figure(666);PyPlot.clf();imshow((ground.-init).^2)
+    #clim(-4,4)
+    perturb = zeros(7,length(c)-2)
+    for i=1:length(c)-2, j=1:7
+        shift = j-4
+        if(shift == 0)
+            perturb[j,i] = err_init
+        else
+            cp       = copy(c)
+            cp[i+1] += shift
+            if(cp[i+1]>=size(data,2) || cp[i+1] < 1)
+                perturb[j,i] = err_init+0.1
+            else
+                rep      = zoneify(data, cp, r, operator=mean)
+                err      = rms(data.-rep)
+                perturb[j,i] = err
+            end
+        end
+    end
+    println("Initial error = ", err_init)
+    println("Real    error = ", err_true)
+    best = minimum(perturb[:])
+    perturb_vec = mapslices(indmin, perturb, 1)[:]
+    c[2:end-1] += perturb_vec.-4
+    rep_out  = zoneify(data, c, r, operator=mean)
+    err_out  = rms(data.-rep_out)
+    err_outt = rms(ground.-rep_out)
+    println("Mid Data    error = ", err_out)
+    println("Mid Real    error = ", err_outt)
+    
+    init     = zoneify(data, c, r, operator=mean)
+    err_init = rms(data.-init)
+    err_true = rms(ground.-init)
+    #figure(666);PyPlot.clf();imshow((ground.-init).^2)
+    #clim(-4,4)
+    perturb = zeros(7,length(c)-2)
+    for i=1:length(c)-2, j=1:7
+        shift = j-4
+        if(shift == 0)
+            perturb[j,i] = err_init
+        else
+            cp       = copy(c)
+            cp[i+1] += shift
+            if(cp[i+1]>=size(data,2) || cp[i+1] < 1)
+                perturb[j,i] = err_init+0.1
+            else
+                rep      = zoneify(data, cp, r, operator=mean)
+                err      = rms(data.-rep)
+                perturb[j,i] = err
+            end
+        end
+    end
+    println("Initial error = ", err_init)
+    println("Real    error = ", err_true)
+    best = minimum(perturb[:])
+    perturb_vec = mapslices(indmin, perturb, 1)[:]
+    c[2:end-1] += perturb_vec.-4
+    rep_out  = zoneify(data, c, r, operator=mean)
+    rep_outt = zoneify(data, c, r, operator=median)
+    err_out  = rms(data.-rep_out)
+    err_outt = rms(ground.-rep_out)
+    println("Mid Data    error = ", err_out)
+    println("Mid Real    error = ", err_outt)
+    
+    
+    figure(6666);PyPlot.clf();imshow((ground.-rep_out).^2)
+    clim(-4,4)
+
+    figure(123);PyPlot.clf();imshow(ground)
+    figure(124);PyPlot.clf();imshow(rep_out);clim(-1,2)
+    figure(125);PyPlot.clf();imshow(rep_outt);clim(-1,2)
+
+    (perturb, perturb_vec)
+    rep_out
+
+end
