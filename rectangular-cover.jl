@@ -305,9 +305,11 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
         end
     end
     real_area = sum(I.== 1)
-    figure(figNum+1)
-    PyPlot.clf();
-    imshow(I, aspect="auto",interpolation="none")
+    if(doPlot)
+        figure(figNum+1)
+        PyPlot.clf();
+        imshow(I, aspect="auto",interpolation="none")
+    end
     println("Total Area = ", total_area)
     println("Real  Area = ", real_area)
 
@@ -447,6 +449,15 @@ function seg_likely(sz, R)
     seg_likelyhood
 end
 
+function seg_seg(rpow, cpow)
+    sz = (length(rpow), length(cpow))
+    seg_likelyhood = zeros(sz)
+    for i=1:sz[1],j=1:sz[2]
+        seg_likelyhood[i,j] = rpow[i] + cpow[j]
+    end
+    seg_likelyhood
+end
+
 #FOR SYNTHETIC DATA ONLY
 function seg_true(sz, synth)
     rpow = zeros(sz[1])
@@ -475,12 +486,12 @@ function demo_triple_cover(seed=rand(Int64))
 
 
     sz = (800,1200)
-    general_noise_level = 1.0
-    sparse_noise_level  = 3.0
-    sparse_noise_cnt    = 0.75
+    general_noise_level = 0.1
+    sparse_noise_level  = 8.0
+    sparse_noise_cnt    = 0.15
 
 
-    data_raw      = make_irregular_grid(height=sz[1], width=sz[2])
+    data_raw      = make_irregular_grid(height=sz[1], width=sz[2], levels=[-1.0,0.0,1.0,2.0])
     general_noise = general_noise_level*randn(sz...)
     sparse_noise  = zeros(sz...)
 
@@ -536,4 +547,8 @@ function demo_triple_cover(seed=rand(Int64))
     plt[:hist](data_in[:], 128)
     figure(12);PyPlot.clf();
     plt[:hist](din_med[:], 128)
+
+    Cover = Matrix{Float64}[findCover(sz, Rlow), findCover(sz,Rmed), findCover(sz,Rhgh)]
+    Rects = Vector{Vector{Int}}[Rlow, Rmed, Rhgh]
+    (din_med, data_raw, data_in, Cover, Rects)
 end

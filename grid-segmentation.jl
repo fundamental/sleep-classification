@@ -56,9 +56,9 @@ function findPeakSeq2(X::Vector{Float64})
     end
     edge = flipud(edge)
 
-    peaks::Bool    = zeros(Bool,N)
-    state          = 0
-    rise_time::Int = 0
+    peaks::Vector{Bool} = zeros(Bool,N)
+    state               = 0
+    rise_time::Int      = 0
 
     for i=2:N-1
         if((state == 0 || state == -1) && edge[i] == +1)
@@ -76,7 +76,7 @@ end
 Get Initial estimate of where various states begin and end based upon region
 transitions
 """
-function getSpectralLines(seq::Vector{Float64}, scale::Real, N::Int; baseFig::Int=-1)
+function getSpectralLines(seq::Vector{Float64}, scale, N::Int; baseFig::Int=-1)
     scale_ = 1
     est = zeros(scale_*N)
 
@@ -97,13 +97,15 @@ end
 Use K-means to Generate a Rough Estimate of low rank band structure
 """
 function identifyInterestBands(img::Matrix{Float64})
-    c  = cov(img')
-    c -= mean(c)
-    mc = mapslices(x->linearMedian(x,9),c,2)
-    k  = kmeans(mc, 8, maxiter=20)
-    diffsig = sign(k.centers[1:end-1,:]).!=sign(k.centers[2:end,:])
-    roi = sum(diffsig,2)[:]
-    roi = conv([1,1,1], roi)
+    Mtx      = Matrix{Float64}
+    Vec      = Vector{Float64}
+    c::Mtx   = cov(img')
+    c       -= mean(c)
+    mc::Mtx  = mapslices(x->linearMedian(x,9),c,2)
+    k        = kmeans(mc, 8, maxiter=20)
+    diffsig  = sign(k.centers[1:end-1,:]).!=sign(k.centers[2:end,:])
+    roi::Vec = sum(diffsig,2)[:]
+    roi      = conv([1,1,1], roi)
     eliminateTransitionNoise(max(0,roi-1))
 end
 
@@ -133,6 +135,14 @@ function eliminateTransitionNoise(bands::Vector{Float64}, Hz::Real=100, thresh::
     classOut
 end
 
+"""
+see getFreqEst...
+"""
+function getFreqSeg(cover)
+    Y = identifyInterestBands(cover)
+    Y = Y[1:end-1] .!= Y[2:end]
+end
+
 
 """
 Get estimate of the likelyhood of a transition between two temporal frames
@@ -144,7 +154,7 @@ x     - rectangluar regions approximating spectral image
 gate  - Function pruning unwanted mode transitions
 """
 function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
-    x::Matrix{Int}, gate::Union{Void,Vector{Float64}}=nothing)
+    x::Matrix{Int}, gate::Union{Void,Any,Vector{Float64}}=nothing)
     flush(STDOUT)
     println("getFreqEst...")
     doPlot = false
@@ -157,8 +167,10 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     esty::Vector{Float64}
     px::Vector{Float64}
     py::Vector{Float64}
-    (estx,px) = getSpectralLines(sequence_x, (sequence_scalex.*sequence_scaley).^0.5, size(img,2), baseFig=0)
-    (esty,py) = getSpectralLines(sequence_y, (sequence_scaley.*sequence_scalex).^0.5, size(img,1), baseFig=10)
+    (estx,px) = getSpectralLines(1.0*sequence_x,
+    (sequence_scalex.*sequence_scaley).^0.5, size(img,2), baseFig=0)
+    (esty,py) = getSpectralLines(1.0*sequence_y,
+    (sequence_scaley.*sequence_scalex).^0.5, size(img,1), baseFig=10)
     if(gate != nothing)
         println("gate.length = ", length(gate));
         println("gate.sum = ",    sum(gate));
@@ -212,15 +224,15 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     push!(yedge, size(img)[1])
     push!(xedge, size(img)[2])
 
-    feat[1] = zoneify(img,xedge,yedge,x->sort(x[:])[round(Int,0.75end)])
+    feat[1] = zoneify(img,xedge,yedge,operator=x->sort(x[:])[round(Int,0.75end)])
     next!(p)
-    feat[2] = zoneify(img,xedge,yedge,x->median(x[:]))
+    feat[2] = zoneify(img,xedge,yedge,operator=x->median(x[:]))
     next!(p)
-    feat[3] = zoneify(img,xedge,yedge,x->sort(x[:])[round(Int,0.25end)])
+    feat[3] = zoneify(img,xedge,yedge,operator=x->sort(x[:])[round(Int,0.25end)])
     next!(p)
-    feat[4] = zoneify(img,xedge,yedge,mean)
+    feat[4] = zoneify(img,xedge,yedge,operator=mean)
     next!(p)
-    feat[5] = zoneify(img-mean(img),xedge,yedge,x->mean(sign(x[:])))
+    feat[5] = zoneify(img-mean(img),xedge,yedge,operator=x->mean(sign(x[:])))
     feat[6] = float(mapslices(sortperm,  feat[1], 1))
     feat[7] = float(mapslices(sortperm,  feat[2], 1))
     feat[8] = float(mapslices(sortperm,  feat[3], 1))
@@ -283,6 +295,7 @@ function likelyHoodSummaryPlot(title_string::ASCIIString, d1r, d2r, d3r,
 end
 
 Img3 = Tuple{Matrix{Float64},Matrix{Float64},Matrix{Float64}}
+Dat3 = Tuple{Matrix{Int}, Matrix{Int}, Matrix{Int}}
 
 """
 Run iteration of temporal mode estimation
@@ -290,8 +303,10 @@ Arguments
 cover - 
 
 """
-function runIndependentIter(cover::Img3, interest::Img3, iterId::Int, plotId::Int)
+function runIndependentIter(I::Matrix{Float64}, cover::Img3, interest::Dat3, ddd, iterId::Int,
+    plotId::Int;doPlot::Bool=false)
     println("Initial Classification.(+$iterId)..")
+    (d1r, d2r, d3r) = ddd
     (d1,d1r,er1) = getFreqEst(I, cover[1],  interest[1], (d1r+d2r+d3r).>1mean(d1r))
     (d2,d2r,er2) = getFreqEst(I, cover[2],  interest[2], (d1r+d2r+d3r).>1mean(d2r))
     (d3,d3r,er3) = getFreqEst(I, cover[3],  interest[3], (d1r+d2r+d3r).>1mean(d3r))
@@ -314,13 +329,13 @@ end
 """
 Estimate the peaks of where mode transitions are the most likely
 """
-function runPeakIter(cover::Img3, interest::Img3,
+function runPeakIter(I::Matrix{Float64}, cover::Img3, interest::Dat3,
                 S::Matrix{Float64},
                 iterId::Int,
-                plotId::Int)
+                plotId::Int; doPlot::Bool=false)
 
     println("Initial Classification.(+$iterId)..")
-    peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
+    peaks = findPeakSeq2((mean(S,2).*median(S,2))[:])[:]
 
     (d1,d1r,er1) = getFreqEst(I, cover[1], interest[1], peaks)
     (d2,d2r,er2) = getFreqEst(I, cover[2], interest[2], peaks)
@@ -332,6 +347,7 @@ function runPeakIter(cover::Img3, interest::Img3,
                               d1r, d2r, d3r, ll, plotId)
     end
 
+    NN(x) = x./maximum(x)
 	S=hcat(NN(d1r),NN(d2r),NN(d3r));
     if(doPlot)
         figure(plotId+100);
@@ -387,9 +403,9 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
 
     #Run some Normal Iterations
     showCombined(hcat(F(d1r), F(d2r), F(d3r)), N, ll, doPlot, 505)
-    (d1r, d2r, d3r) = runIndependentIter(Co, In, (d1r, d2r, d3r), 1, 406)
+    (d1r, d2r, d3r) = runIndependentIter(I, Co, In, (d1r, d2r, d3r), 1, 406)
     showCombined(hcat(F(d1r), F(d2r), F(d3r)), N, ll, doPlot, 506)
-    (d1r, d2r, d3r) = runIndependentIter(Co, In, (d1r, d2r, d3r), 2, 407)
+    (d1r, d2r, d3r) = runIndependentIter(I, Co, In, (d1r, d2r, d3r), 2, 407)
 
     #Create a combined view
 	S::Matrix{Float64}=hcat(F(d1r),F(d2r),F(d3r));
@@ -399,9 +415,9 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     end
 
     #Refine peak sequence
-    S = runPeakIter(Co, In, S, 3, 408)
-    S = runPeakIter(Co, In, S, 4, 409)
-    S = runPeakIter(Co, In, S, 5, 410)
+    S = runPeakIter(I, Co, In, S, 3, 408)
+    S = runPeakIter(I, Co, In, S, 4, 409)
+    S = runPeakIter(I, Co, In, S, 5, 410)
     
     #Last iteration inline
     peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
@@ -440,6 +456,105 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     D3 = windowedOperator(d3r./maximum(d1r),maximum,5);
 end
 
+function grid_seg(I::Matrix{Float64}, cover, rects, doPlot::Bool=false)
+    (coverLow,coverMed,coverHigh) = cover
+    (interestLow_,interestMed_,interestHigh_) = rects
+    interestLow  = hcat(interestLow_...)'
+    interestMed  = hcat(interestMed_...)'
+    interestHigh = hcat(interestHigh_...)'
 
-function demo_xy_modality()
+    #Define Types
+    d1::Vector{Float64}
+    d1r::Vector{Int}
+    er1::Vector{Float64}
+    d2::Vector{Float64}
+    d2r::Vector{Int}
+    er2::Vector{Float64}
+    d3::Vector{Float64}
+    d3r::Vector{Int}
+    er3::Vector{Float64}
+
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow)
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed)
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh)
+    N = length(d1)
+    println("Initial Classification...")
+    if(doPlot)
+        likelyHoodSummaryPlot("Transition Likelyhood(Orig)",
+                              d1r, d2r, d3r, ll, 405)
+    end
+
+    #Normalizing Operators
+    NN(x) = x./maximum(x)
+    F(x)  = NN(windowedOperator(x./maximum(x),maximum,5))
+
+    Co = (coverLow,    coverMed,    coverHigh)
+    In = (interestLow, interestMed, interestHigh)
+
+    #Run some Normal Iterations
+    #showCombined(hcat(F(d1r), F(d2r), F(d3r)), N, ll, doPlot, 505)
+    (d1r, d2r, d3r) = runIndependentIter(I, Co, In, (d1r, d2r, d3r), 1, 406)
+    #showCombined(hcat(F(d1r), F(d2r), F(d3r)), N, ll, doPlot, 506)
+    (d1r, d2r, d3r) = runIndependentIter(I, Co, In, (d1r, d2r, d3r), 2, 407)
+
+    #Create a combined view
+	S::Matrix{Float64}=hcat(F(d1r),F(d2r),F(d3r));
+    if(doPlot)
+        figure(507);plt.clf();plot(mean(S,2).*median(S,2))
+        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+    end
+
+    #Refine peak sequence
+    S = runPeakIter(I, Co, In, S, 3, 408)
+    S = runPeakIter(I, Co, In, S, 4, 409)
+    S = runPeakIter(I, Co, In, S, 5, 410)
+    
+    #Last iteration inline
+    peaks = findPeakSeq2((mean(S,2).*median(S,2))[:])[:]
+    println("Initial Classification.(+6)..")
+    peaks[find((mean(S,2).*median(S,2)) .< 0.02)] = false
+    (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  peaks)
+    (d2,d2r,er2) = getFreqEst(I, coverMed,  interestMed,  peaks)
+    (d3,d3r,er3) = getFreqEst(I, coverHigh, interestHigh, peaks)
+
+    if(doPlot)
+        likelyHoodSummaryPlot("Transition Likelyhood(+6)",
+                              d1r, d2r, d3r, ll, 411)
+    end
+
+	S=hcat(NN(d1r),NN(d2r),NN(d3r));
+
+    if(doPlot)
+        figure(511);plt.clf();plot(mean(S,2).*median(S,2))
+        title("Transition Likelyhood(+6)")
+        scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
+    end
+
+    D1 = windowedOperator(d1r./maximum(d1r),maximum,5);
+    D2 = windowedOperator(d2r./maximum(d1r),maximum,5);
+    D3 = windowedOperator(d3r./maximum(d1r),maximum,5);
+
+    freq_l = getFreqSeg(coverLow)
+    freq_m = getFreqSeg(coverMed)
+    freq_h = getFreqSeg(coverHigh)
+
+    cseg = (mean(S,2).*median(S,2))[:]
+    rseg = (mean(hcat(freq_l,freq_m,freq_h),2)[:])
+    cs = vcat(1, find(cseg.>0.6), length(cseg))
+    rs = vcat(1, find(rseg.>0.3), length(rseg))
+    z1=zoneify(I, cs, rs, operator=median)
+    z2=zoneify(I, cs, rs, operator=mean)
+
+    figure(900);imshow(seg_seg(rseg,cseg),aspect="auto",interpolation="none")
+    figure(901);imshow(z1, aspect="auto",interpolation="none")
+    clim(-1.0,2.0)
+    figure(902);imshow(z2, aspect="auto",interpolation="none")
+    clim(-1.0,2.0)
+    (rseg, cseg, z1, z2)
+end
+
+function demo_xy_modality(seed=0)
+    (data, ground, noise, cover, rects) = demo_triple_cover(seed)
+    (r,c,a,b) = grid_seg(data, cover, rects)
+    return (r,c,ground,noise,a,b)
 end
