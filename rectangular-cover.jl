@@ -480,16 +480,13 @@ function seg_true(sz, synth)
     seg_likelyhood
 end
 
-function demo_triple_cover(seed=rand(Int64))
+function demo_triple_cover(seed=rand(Int64);general_noise_level=8.0,
+    sparse_noise_level=8.0,sparse_noise_cnt=0.15)
     println("seed = ", seed)
     srand(seed)
 
 
     sz = (800,1200)
-    general_noise_level = 0.1
-    sparse_noise_level  = 8.0
-    sparse_noise_cnt    = 0.15
-
 
     data_raw      = make_irregular_grid(height=sz[1], width=sz[2], levels=[-1.0,0.0,1.0,2.0])
     general_noise = general_noise_level*randn(sz...)
