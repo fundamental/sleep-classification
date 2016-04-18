@@ -2,3 +2,6 @@ Sleep Classificaiton Code
 -------------------------
 
 This repository is a collection of some various sleep classification routines.
+
+Most of this work relates to in progress research, though several prior
+methods will be included for comparison.
