@@ -67,7 +67,7 @@ Generate Bandpower features for an EEG datastream
     in_freq - sample rate of EEG data (Hz)
 """
 function make_features(stream::Vector{Float64}; window::Int=30,
-    in_freq::Float64=200.0)
+    in_freq::Int=200)
     Delta     = extract_band(stream, window, in_freq, 3., 4.);
     Theta     = extract_band(stream, window, in_freq, 4., 8.);
     Alpha     = extract_band(stream, window, in_freq, 8., 13.);
