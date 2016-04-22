@@ -34,7 +34,7 @@ function cross_validate(features::Vector{Matrix{Float64}},
         #println(size(labels[i]))
 
         validate(F, L, features[i], labels[i][1:size(features[i],2)], trees=100,
-        feats=2,
+        feats=8,
         doPlot=i)
     end
 end
