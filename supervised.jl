@@ -7,7 +7,7 @@ WIP
 """
 function cross_validate(features::Vector{Matrix{Float64}},
     labels::Vector{Vector{Int}}; method::Symbol=:leave_one_out)
-    for i=1:length(features)
+    for i=15:length(features)
         println("evaluating $i")
         F = nothing
         L = nothing
@@ -33,8 +33,8 @@ function cross_validate(features::Vector{Matrix{Float64}},
         #println(size(features[i]))
         #println(size(labels[i]))
 
-        validate(F, L, features[i], labels[i][1:size(features[i],2)], trees=100,
-        feats=8,
+        validate(F, L, features[i], labels[i][1:size(features[i],2)], trees=40,
+        feats=20,
         doPlot=i)
     end
 end

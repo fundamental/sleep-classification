@@ -18,6 +18,14 @@ function import_data(SubjectID::Int)
     DataSet
 end
 
+function import_data(SubjectID::Int)
+    f = HDF5.h5open("/home/mark/current/general-sleep/patient$SubjectID.h5")
+    DataSet::Vector{Float64} = read(f["2"])
+    close(f)
+    println("Dataset is ", length(DataSet), " elements")
+    DataSet
+end
+
 """
 Obtain the raw spectra from SubjectID
 """
@@ -25,7 +33,7 @@ function raw_spec(SubjectID::Int)
     DD = import_data(SubjectID)
     figure(999)
     (Spectra,_) = specgram(DD, 4096, 100, noverlap=0)
-    plt.close()
+    PyPlot.close()
     Spectra = log(abs(Spectra.^2))
 end
 
@@ -39,7 +47,7 @@ function generate_spectra(DataSet::Vector{Float64}, SubjectID::Int, doPlot::Bool
     title("Unnormalized Spectra")
     imshow(Spectra, aspect="auto", interpolation="none")
     if(!doPlot)
-        plt.close()
+        PyPlot.close()
         Base.yield()
     end
     Spectra = mapslices(x->x-sort(x)[floor(Int,end/2)], Spectra, 1)
@@ -61,7 +69,7 @@ function generate_spectra(DataSet::Vector{Float64}, SubjectID::Int, doPlot::Bool
 
     if(doPlot)
         figure(102)
-        plt.clf()
+        PyPlot.clf()
         imshow(Spectra[100:end,:], aspect="auto", interpolation="none",
         vmin=Smin, vmax=Smax, cmap=gray())
         title("Normalized Spectra")
@@ -102,7 +110,7 @@ function robustSpikeElimination(Spectra::Matrix{Float64})
     #Run a min variance alg to find a suitable gausian description of this
     #spectral distance
     N = length(excitation)
-    for i=int(0.8N):N
+    for i=round(Int,0.8N):N
         samples = excitation[1:i]
 
         m = mean(samples)
@@ -155,10 +163,11 @@ function runAquisition(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     "$workingDir/DejunkedSpectra$SubjectID.png")
     writecsv("$workingDir/Dejunked$SubjectID-cols.csv", seq)
 
-    raw_labels = readcsv("general-sleep/HypnogramAASM_subject$SubjectID.txt")[2:end]
+    #raw_labels = readcsv("general-sleep/HypnogramAASM_subject$SubjectID.txt")[2:end]
+    raw_labels = readcsv("/home/mark/current/general-sleep/patients/HypnogramAASM_patient$SubjectID.txt")[2:end]
     println("length(seq)       =", length(seq))
     println("length(raw_labels)=", length(raw_labels))
-    dejunked_labels = raw_labels[int(find(seq)*4.096)]
+    dejunked_labels = raw_labels[round(Int, find(seq)*4.096)]
     if(doPlot)
         figure(104)
         title("Raw Labels")

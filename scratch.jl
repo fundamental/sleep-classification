@@ -26,6 +26,48 @@ if(false)
     end
 end
 
+if(false)
+    Root = "/home/mark/code/sleep-classification/tmp/"
+
+    Feats  = Matrix{Float64}[]
+    Labels = Vector{Int}[]
+    for i=1:26
+        println("subject ", i)
+        F = Images.imread(string(Root,"DejunkedSpectra$i.png"))[1:1000,:]'
+        L = map(Int,readcsv(string(Root, "Dejunkedlabels$i.csv")))[:]
+        push!(Feats,  F)
+        push!(Labels, L)
+    end
+end
+
+#50 trees 20 feats
+raw_data_acc = [1 0.628
+2 0.212
+3 0.307
+4 0.722
+5 0.414
+6 0.648
+7 0.62
+8 0.382
+9 0.617
+10 0.733
+11 0.742
+12 0.674
+13 0.611
+14 0.592
+15 0.558
+16 0.573
+17 0.377
+18 0.703
+19 0.4
+20 0.493
+21 0.409
+22 0.515
+23 0.644
+24 0.635
+25 0.46
+26 0.684]
+
 
 bandpow = [2 0.7829698857736241
  3 0.2333984375
