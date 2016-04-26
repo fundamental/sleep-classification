@@ -228,7 +228,9 @@ output - a collection of rectangles in the form
  .
  [x1 x2 y1 y2]]
 """
-function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
+function rectSegment(Img::BitArray{2}, figNum::Int=100;
+    workingDir::ASCIIString="tmp", doPlot::Bool=false,
+    state::ASCIIString="unknown", SubjectID::Int=0)
     R = Vector{Vector{Int}}()
     #tic()
     for i=1:4096
@@ -288,7 +290,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100, doPlot::Bool=false)
         #title("Cover for $state")
         PyPlot.clf()
         imshow(Cover, aspect="auto", interpolation="none")
-        #imwrite(float64(Cover), "$workingDir/cover$state$SubjectID.png")
+        imwrite(float64(Cover), "$workingDir/cover$state$SubjectID.png")
     end
 
     #figure(3)
@@ -345,8 +347,9 @@ function doRectSegment(SubjectID::Int, state::ASCIIString, figNum::Int, workingD
     File = "$workingDir/$state$SubjectID.png"
 
     img = map(float, PyPlot.imread(File))
-    Img = map(x->x.>0.5, img)
-    result = rectSegment(Img, figNum, doPlot)
+    Img = img.>0.5#map(x->x.>0.5, img)
+    result = rectSegment(Img, figNum, workingDir=workingDir, doPlot=doPlot,
+    state=state, SubjectID=SubjectID)
 
     writecsv("$workingDir/interest$SubjectID-$state.csv", hcat(result...)')
 end

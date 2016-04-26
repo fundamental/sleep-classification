@@ -40,6 +40,61 @@ if(false)
     end
 end
 
+#zero mean and 2nd std is at +-1
+function histNormalize(img)
+    t = img-mean(img)
+    map(Float64,t./(3*std(t)))
+end
+
+function doMakeThresholds(SubjectID; workingDir="tmp", doPlot=false)
+    I = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
+
+    #figure(1)
+    #imshow(I, aspect="auto", interpolation="none")
+    #
+    #figure(2)
+    #imshow(Median3(I), aspect="auto", interpolation="none")
+    #
+    rmed = recursiveMedian(I)
+    if(doPlot)
+        figure(201)
+        title("Recursive Median Results")
+        imshow(rmed, aspect="auto", interpolation="none")
+    end
+
+    hn = histNormalize(rmed)
+    high = GeneralMedian(threshold(hn,  0.1,  Inf), 5)
+    med  = GeneralMedian(threshold(hn, -0.2,  0.2), 5)
+    low  = GeneralMedian(threshold(hn, -Inf, -0.1), 5)
+    imwrite(high, "$workingDir/high$SubjectID.png")
+    imwrite(med,  "$workingDir/med$SubjectID.png")
+    imwrite(low,  "$workingDir/low$SubjectID.png")
+    combined = zeros(size(high)[1],size(high)[2],3)
+    combined[:,:,1] = high
+    combined[:,:,2] = med
+    combined[:,:,3] = low
+    if(doPlot)
+        figure(202)
+        title("Regions")
+        imshow(combined, aspect="auto", interpolation="none")
+        figure(203)
+        title("Histogram")
+        PyPlot.plt[:hist](hn[:],128)
+    end
+end
+
+if(false)
+    for i=1:26
+        doMakeThresholds(i,doPlot=true)
+        doRectSegment(i, "low",  100, "tmp", true)
+        doRectSegment(i, "med",  200, "tmp", true)
+        doRectSegment(i, "high", 300, "tmp", true)
+    end
+end
+
+doLikelyHoodEst(10,"tmp", true)
+
+
 #50 trees 20 feats
 raw_data_acc = [1 0.628
 2 0.212

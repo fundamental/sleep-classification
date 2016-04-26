@@ -207,7 +207,7 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     Z = X'.*Y
     if(doPlot)
         figure(21);
-        plt.clf();
+        PyPlot.clf();
         imshow(img,aspect="auto",interpolation="none");
         imshow(log(Z+0.1),aspect="auto",interpolation="none",alpha=0.5)
     end
@@ -283,11 +283,12 @@ end
 function likelyHoodSummaryPlot(title_string::ASCIIString, d1r, d2r, d3r,
     ll::Vector{Int}, figureId::Int)
     figure(figureId)
-    plt.clf();
+    PyPlot.clf();
     title(title_string)
     println("red mean   = ", mean(d1r[d1r.!=0]))
     println("blue mean  = ", mean(d2r[d2r.!=0]))
     println("green mean = ", mean(d3r[d3r.!=0]))
+    N = length(d1r)
     scatter(1:N, 10(d1r./maximum(d1r)), marker=".", color="r")
     scatter(1:N, 10(d2r./maximum(d1r)), marker=".", color="g")
     scatter(1:N, 10(d3r./maximum(d1r)), marker=".", color="b")
@@ -321,7 +322,7 @@ end
 	
 function showCombined(s, N, ll, doPlot, plotId)
     if(doPlot)
-        figure(plotId);plt.clf();plot(mean(s,2).*median(s,2))
+        figure(plotId);PyPlot.clf();plot(mean(s,2).*median(s,2))
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
 end
@@ -351,7 +352,7 @@ function runPeakIter(I::Matrix{Float64}, cover::Img3, interest::Dat3,
 	S=hcat(NN(d1r),NN(d2r),NN(d3r));
     if(doPlot)
         figure(plotId+100);
-        plt.clf();
+        PyPlot.clf();
         plot(mean(S,2).*median(S,2))
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
@@ -363,7 +364,7 @@ Estimate Which Transitions are likely to be real changepoints
 When in doubt oversegment
 """
 function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
-    ll::Vector{Int}    = readcsv("$workingDir/Dejunkedlabels$SubjectID.csv")
+    ll::Vector{Int}    = round(Int,readcsv("$workingDir/Dejunkedlabels$SubjectID.csv")[:])
     I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 
     coverLow::Matrix{Float64} = PyPlot.imread("$workingDir/coverlow$SubjectID.png")
@@ -410,7 +411,7 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     #Create a combined view
 	S::Matrix{Float64}=hcat(F(d1r),F(d2r),F(d3r));
     if(doPlot)
-        figure(507);plt.clf();plot(mean(S,2).*median(S,2))
+        figure(507);PyPlot.clf();plot(mean(S,2).*median(S,2))
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
 
@@ -420,7 +421,7 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
     S = runPeakIter(I, Co, In, S, 5, 410)
     
     #Last iteration inline
-    peaks = findPeakSeq2(mean(S,2).*median(S,2))[:]
+    peaks = findPeakSeq2((mean(S,2).*median(S,2))[:])[:]
     println("Initial Classification.(+6)..")
     peaks[find((mean(S,2).*median(S,2)) .< 0.02)] = false
     (d1,d1r,er1) = getFreqEst(I, coverLow,  interestLow,  peaks)
@@ -435,7 +436,7 @@ function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
 	S=hcat(NN(d1r),NN(d2r),NN(d3r));
 
     if(doPlot)
-        figure(511);plt.clf();plot(mean(S,2).*median(S,2))
+        figure(511);PyPlot.clf();plot(mean(S,2).*median(S,2))
         title("Transition Likelyhood(+6)")
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
@@ -500,7 +501,7 @@ function grid_seg(I::Matrix{Float64}, cover, rects, doPlot::Bool=false)
     #Create a combined view
 	S::Matrix{Float64}=hcat(F(d1r),F(d2r),F(d3r));
     if(doPlot)
-        figure(507);plt.clf();plot(mean(S,2).*median(S,2))
+        figure(507);PyPlot.clf();plot(mean(S,2).*median(S,2))
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
 
@@ -525,7 +526,7 @@ function grid_seg(I::Matrix{Float64}, cover, rects, doPlot::Bool=false)
 	S=hcat(NN(d1r),NN(d2r),NN(d3r));
 
     if(doPlot)
-        figure(511);plt.clf();plot(mean(S,2).*median(S,2))
+        figure(511);PyPlot.clf();plot(mean(S,2).*median(S,2))
         title("Transition Likelyhood(+6)")
         scatter(linspace(1,N,length(ll)), ll, marker="|", color="k")
     end
