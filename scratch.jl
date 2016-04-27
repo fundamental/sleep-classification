@@ -92,7 +92,11 @@ if(false)
     end
 end
 
-doLikelyHoodEst(10,"tmp", true)
+if(true)
+    for i=1:26
+        @time doLikelyHoodEst(i,"tmp", true)
+    end
+end
 
 
 #50 trees 20 feats

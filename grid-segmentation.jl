@@ -54,7 +54,7 @@ function findPeakSeq2(X::Vector{Float64})
             state = edge[i]
         end
     end
-    edge = flipud(edge)
+    edge = flipdim(edge,1)
 
     peaks::Vector{Bool} = zeros(Bool,N)
     state               = 0
@@ -65,7 +65,7 @@ function findPeakSeq2(X::Vector{Float64})
             state = +1
             rise_time = i
         elseif(state == +1 && edge[i] == -1)
-            peaks[int(floor(Int,(rise_time+i)/2))] = true
+            peaks[floor(Int,(rise_time+i)/2)] = true
             state = -1
         end
     end
@@ -76,15 +76,15 @@ end
 Get Initial estimate of where various states begin and end based upon region
 transitions
 """
-function getSpectralLines(seq::Vector{Float64}, scale, N::Int; baseFig::Int=-1)
-    scale_ = 1
-    est = zeros(scale_*N)
+function getSpectralLines(seq::Vector{Float64}, scale::Vector{Float64}, N::Int; baseFig::Int=-1)
+    scale_::Int = 1
+    est::Vector{Float64} = zeros(scale_*N)
 
-    N = length(seq)
-    p = Progress(length(est)*N)
+    N::Int = length(seq)
+    #p = Progress(length(est)*N)
     for i=1:N, j=1:length(est)
-        next!(p)
-        evalPt = (j-1)/scale_
+        #next!(p)
+        evalPt::Float64 = (j-1)/scale_
         est[j] += (scale[i])*exp(-(evalPt-seq[i])^2/8)
     end
 
@@ -158,10 +158,10 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     flush(STDOUT)
     println("getFreqEst...")
     doPlot = false
-    sequence_x      = vcat(x[:,1][:],x[:,2][:])
-    sequence_scalex = vcat((x[:,4]-x[:,3])[:], (x[:,4]-x[:,3])[:])
-    sequence_y      = vcat(x[:,3][:],x[:,4][:])
-    sequence_scaley = vcat((x[:,2]-x[:,1])[:], (x[:,2]-x[:,1])[:])
+    sequence_x::Vector{Int}      = vcat(x[:,1][:],x[:,2][:])
+    sequence_scalex::Vector{Int} = vcat((x[:,4]-x[:,3])[:], (x[:,4]-x[:,3])[:])
+    sequence_y::Vector{Int}      = vcat(x[:,3][:],x[:,4][:])
+    sequence_scaley::Vector{Int} = vcat((x[:,2]-x[:,1])[:], (x[:,2]-x[:,1])[:])
 
     estx::Vector{Float64}
     esty::Vector{Float64}
@@ -172,12 +172,13 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     (esty,py) = getSpectralLines(1.0*sequence_y,
     (sequence_scaley.*sequence_scalex).^0.5, size(img,1), baseFig=10)
     if(gate != nothing)
-        println("gate.length = ", length(gate));
-        println("gate.sum = ",    sum(gate));
-        println("px.length = ", length(px));
+        #println("gate.length = ", length(gate));
+        #println("gate.sum = ",    sum(gate));
+        #println("px.length = ", length(px));
         px[2:end] = (1.0*gate)
         estx+=1e-6
     end
+    #print("A")
 
     pex = estx.*px
     pey = esty.*py
@@ -202,8 +203,11 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     X::Vector{Float64} = px.*estx
     Y::Vector{Float64} = py.*esty
 
-    Y = identifyInterestBands(cover)
-    Y = Y[1:end-1] .!= Y[2:end]
+    Y_ = identifyInterestBands(cover)
+    for i=1:length(Y_)-1
+        Y[i] = Y_[i] != Y_[i+1]
+    end
+    #Y = Y[1:end-1] .!= Y[2:end]
     Z = X'.*Y
     if(doPlot)
         figure(21);
@@ -211,10 +215,10 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
         imshow(img,aspect="auto",interpolation="none");
         imshow(log(Z+0.1),aspect="auto",interpolation="none",alpha=0.5)
     end
+    #print("B")
 
-    println("Extracting Features")
-    feat = Array(Any,10)
-    p = Progress(length(feat))
+    #println("Extracting Features")
+    feat::Vector{Matrix{Float64}} = Array(Matrix{Float64},10)
 
     #Create the list of edges
     xedge = find(X)
@@ -225,30 +229,37 @@ function getFreqEst(img::Matrix{Float64}, cover::Matrix{Float64},
     push!(xedge, size(img)[2])
 
     feat[1] = zoneify(img,xedge,yedge,operator=x->sort(x[:])[round(Int,0.75end)])
-    next!(p)
     feat[2] = zoneify(img,xedge,yedge,operator=x->median(x[:]))
-    next!(p)
     feat[3] = zoneify(img,xedge,yedge,operator=x->sort(x[:])[round(Int,0.25end)])
-    next!(p)
     feat[4] = zoneify(img,xedge,yedge,operator=mean)
-    next!(p)
     feat[5] = zoneify(img-mean(img),xedge,yedge,operator=x->mean(sign(x[:])))
     feat[6] = float(mapslices(sortperm,  feat[1], 1))
     feat[7] = float(mapslices(sortperm,  feat[2], 1))
     feat[8] = float(mapslices(sortperm,  feat[3], 1))
     feat[9] = float(mapslices(sortperm,  feat[4], 1))
     feat[10] = float(mapslices(sortperm, feat[5], 1))
+    #print("C")
 
 
     diff_sig::Vector{Float64} = zeros(size(feat[1],2)-1)
 
-    for j=1:20
-        for i=1:length(feat)
-            r::Vector{Int} = kClassify_nway(feat[i], 8, plotID=256, maxiter=20)
-            diff_sig_   = r[1:end-1].!=r[2:end]
-            diff_sig += diff_sig_#.*estx[1:end-1]#1.0/sum(diff_sig)
+    for i=1:length(feat)
+        memo = nothing
+        for j=1:20
+            r::Vector{Int}
+            if(memo != nothing)
+                r = kClassify_nway_memo(feat[i], 8, memo,
+                plotID=256, maxiter=20)
+                diff_sig_   = r[1:end-1].!=r[2:end]
+                diff_sig += diff_sig_#.*estx[1:end-1]#1.0/sum(diff_sig)
+            else
+                (r, memo) = kClassify_nway(feat[i], 8, plotID=256, maxiter=20)
+                diff_sig_   = r[1:end-1].!=r[2:end]
+                diff_sig += diff_sig_#.*estx[1:end-1]#1.0/sum(diff_sig)
+            end
         end
     end
+    #print("D")
 
     diff_freq::Vector{Float64} = diff_sig.*estx[1:end-1]./sum(estx[1:end-1])
 
@@ -265,14 +276,20 @@ Arguments:
 """
 function windowedOperator{T}(data::Vector{T}, op, window::Int)
     @assert isodd(window)
-    M = int((window-1)/2)
+    M = round(Int,(window-1)/2)
     N = length(data)
-    access(x) = x<1?1:x>N?N:x
+    access(x,N) = x<1?1:x>N?N:x
     result = zeros(N)
     for i=1:N
         input = zeros(window)
-        for j=1:window
-            input[j] = data[access(i+j-M)]
+        if(i-M < 1 || i+window > N)
+            for j=1:window
+                input[j] = data[access(i+j-M,N)]
+            end
+        else
+            for j=1:window
+                input[j] = data[i+j-M]
+            end
         end
         result[i] = op(input)
     end
