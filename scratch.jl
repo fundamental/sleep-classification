@@ -92,11 +92,74 @@ if(false)
     end
 end
 
-if(true)
+if(false)
     for i=1:26
         @time doLikelyHoodEst(i,"tmp", true)
     end
 end
+
+function viewStuff(SubjectID, workDir, doPlot=true, misc=false)
+    ep  = readcsv("$workDir/edgeParameter$SubjectID.csv")
+    dat = getSpectra(SubjectID, workDir)[1:1000,:]
+    ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
+    if(doPlot)
+        figure(0);PyPlot.clf();
+        plot(ll)
+        figure(1);PyPlot.clf();
+        imshow(dat,aspect="auto",interpolation="none")
+        figure(2);PyPlot.clf();
+        plot(maximum(ep,2)[:])
+    end
+
+    X = find(maximum(ep,2)[:])
+    Y = find(ones(size(dat)[1]))
+    prepend!(X,[1])
+    push!(X,size(dat,2))
+
+    if(misc)
+        mn = zoneifyGradient(dat, X, Y)
+        md = zoneify(dat, X, Y, operator=median)
+    else
+        mn = zoneify(dat, X, Y, operator=mean)
+        md = zoneify(dat, X, Y, operator=median)
+    end
+    iimax = zoneify(dat, X, Y, operator=maximum)
+    iimin = zoneify(dat, X, Y, operator=minimum)
+    out = (0.4*dat+mn+md)/2.01
+    #out = dat
+
+    if(doPlot)
+        figure(3);PyPlot.clf();
+        imshow(mn,aspect="auto",interpolation="none")
+
+        figure(4);PyPlot.clf();
+        imshow(md,aspect="auto",interpolation="none")
+
+        figure(5);PyPlot.clf();
+        imshow(iimax,aspect="auto",interpolation="none")
+
+        figure(6);PyPlot.clf();
+        imshow(iimin,aspect="auto",interpolation="none")
+        figure(7);PyPlot.clf();
+        imshow(out,aspect="auto",interpolation="none");
+
+        figure(8);PyPlot.clf();
+        imshow(mapslices(sortperm,dat,1),aspect="auto",interpolation="none");
+        figure(9);PyPlot.clf();
+        imshow(mapslices(sortperm,out,1),aspect="auto",interpolation="none");
+    end
+    (ll, dat, mn, md, out)
+end
+
+function getSpectra(SubjectID, workDir)
+    Sp = raw_spec(SubjectID)
+    Cl = readcsv("$workDir/Dejunked$SubjectID-cols.csv")
+    Sp[:,find(Cl)]
+    #imread("$workDir/DejunkedSpectra$SubjectID.png")
+end
+
+
+viewStuff(18, "tmp")
 
 
 #50 trees 20 feats
