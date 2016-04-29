@@ -1,4 +1,4 @@
-
+using JLD
 """
 Take a sequence of M labels and return a sequence of M labels by using very
 cheap interpolation
@@ -158,8 +158,31 @@ function getSpectra(SubjectID, workDir)
     #imread("$workDir/DejunkedSpectra$SubjectID.png")
 end
 
+function collectThemAll()
+    result = Any[]
+    for i=1:26
+        stuff = viewStuff(i, "tmp")
+        push!(result, (stuff[5], stuff[1]))
+    end
+    result
+end
 
-viewStuff(18, "tmp")
+#results = collectThemAll();
+#save("patients-april.jld", "results", results)
+results = load("patients-april.jld")["results"]
+
+if(false)
+    Feats  = Matrix{Float64}[]
+    Labels = Vector{Int}[]
+    for i=1:26
+        push!(Feats,  results[i][1])
+        push!(Labels, round(Int, results[i][2])[:])
+    end
+    cross_validate(Feats, Labels)
+end
+
+
+#viewStuff(22, "tmp")
 
 
 #50 trees 20 feats
@@ -276,3 +299,32 @@ cfc_two =
  24 0.5555555555555556
  25 0.5495829471733086
  26 0.4875124875124875]
+
+phd_meth =
+[1 0.7390282131661442
+ 2 0.555956678700361
+ 3 0.7433155080213903
+ 4 0.7376453488372093
+ 5 0.6068066618392469
+ 6 0.8169219547775346
+ 7 0.5963855421686747
+ 8 0.4929305912596401
+ 9 0.8301886792452831
+ 10 0.8344327176781002
+ 11 0.7075471698113207
+ 12 0.7524613220815752
+ 13 0.6041512231282431
+ 14 0.718052738336714
+ 15 0.5466562986003111
+ 16 0.7648562300319489
+ 17 0.218
+ 18 0.8216636744464393
+ 19 0.7362045760430687
+ 20 0.513677811550152
+ 21 0.40992167101827676
+ 22 0.5604681404421327
+ 23 0.8602620087336245
+ 24 0.7040816326530612
+ 25 0.3807531380753138
+ 26 0.7427536231884058]
+

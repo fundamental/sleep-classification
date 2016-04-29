@@ -7,7 +7,7 @@ WIP
 """
 function cross_validate(features::Vector{Matrix{Float64}},
     labels::Vector{Vector{Int}}; method::Symbol=:leave_one_out)
-    for i=15:length(features)
+    for i=1:length(features)
         println("evaluating $i")
         F = nothing
         L = nothing
