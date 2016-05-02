@@ -171,18 +171,44 @@ end
 #save("patients-april.jld", "results", results)
 results = load("patients-april.jld")["results"]
 
-if(false)
+if(true)
     Feats  = Matrix{Float64}[]
     Labels = Vector{Int}[]
     for i=1:26
-        push!(Feats,  results[i][1])
+        push!(Feats, 2.0PyPlot.imread("tmp/coverhigh$i.png")+
+                    (PyPlot.imread("tmp/covermed$i.png")-0.5)-
+                     PyPlot.imread("tmp/coverlow$i.png"))
+        #push!(Feats,  results[i][1])
         push!(Labels, round(Int, results[i][2])[:])
     end
-    cross_validate(Feats, Labels)
+    results = nothing
+    #cross_validate(Feats, Labels)
 end
 
-
 #viewStuff(22, "tmp")
+
+#Extract data from plots
+if(false)
+    Expected   = Vector{Int}[]
+    Classified = Vector{Int}[]
+    for i=1:26
+        figure(i)
+        push!(Expected,   round(Int,gca()[:get_lines]()[1][:get_ydata]()))
+        push!(Classified, round(Int,gca()[:get_lines]()[2][:get_ydata]()))
+    end
+    save("patients-april-cover.jld", "expected", Expected, "classified",
+    Classified)
+end
+
+cf = make_conf(vcat(Expected...), vcat(Classified...), [1,2,3,4,5])
+println("total mean accuracy = ", 100sum(diag(cf))/sum(cf), "%")
+for i=1:26
+    cf = make_conf(Expected[i], Classified[i], [1,2,3,4,5])
+    cf2 = make_conf(Expected[i], Classified[i], [1,2,4,5])
+    println("sub $i mean accuracy = ", round(Int, 100sum(diag(cf))/sum(cf)), "% or ",
+    round(Int, 100sum(diag(cf2))/sum(cf2)), "% (base ", round(Int,
+    100mean(Expected[i].==Classified[i])), "%)")
+end
 
 
 #50 trees 20 feats
@@ -300,6 +326,7 @@ cfc_two =
  25 0.5495829471733086
  26 0.4875124875124875]
 
+ #40 tree 20 feat
 phd_meth =
 [1 0.7390282131661442
  2 0.555956678700361
@@ -327,4 +354,34 @@ phd_meth =
  24 0.7040816326530612
  25 0.3807531380753138
  26 0.7427536231884058]
+
+
+ #40 tree 20 feat
+phd_cover = 
+[1 0.6504702194357367
+ 2 0.3148014440433213
+ 3 0.6818181818181818
+ 4 0.8023255813953488
+ 5 0.5843591600289645
+ 6 0.8738147337709701
+ 7 0.6822289156626506
+ 8 0.4235218508997429
+ 9 0.7851959361393324
+ 10 0.8773087071240105
+ 11 0.7405660377358491
+ 12 0.7137834036568214
+ 13 0.6501111934766494
+ 14 0.691683569979716
+ 15 0.6026438569206843
+ 16 0.8849840255591054
+ 17 0.316
+ 18 0.7779772591262717
+ 19 0.6480484522207268
+ 20 0.5949848024316109
+ 21 0.5313315926892951
+ 22 0.5838751625487646
+ 23 0.888646288209607
+ 24 0.6766091051805337
+ 25 0.608786610878661
+ 26 0.7630434782608696]
 
