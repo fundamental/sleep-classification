@@ -140,3 +140,7 @@ function linearMedian{T}(vec::Vector{T}, med::Int)
     result
 end
 
+"""
+Transform input sequence [1,2,3,4] into [1,0,2,0,3,0,4,0]
+"""
+upsample2x(x) = vcat(x',zeros(size(x))')[:]
