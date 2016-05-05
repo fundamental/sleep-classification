@@ -215,3 +215,10 @@ function zoneify(img::Matrix{Float64}, xedge::Vector{Int}, yedge::Vector{Int}; o
     end
     I
 end
+
+"""
+Shortcut to PyPlot.imshow with improved defaults
+"""
+function ishow(x::Matrix{Float64})
+    imshow(x, aspect="auto", interpolation="none")
+end
