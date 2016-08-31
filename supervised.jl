@@ -6,8 +6,11 @@ Crossvalidation
 WIP
 """
 function cross_validate(features::Vector{Matrix{Float64}},
-    labels::Vector{Vector{Int}}; method::Symbol=:leave_one_out, 
-    selection::Vector{Int}=collect(1:length(features)))
+    labels::Vector{Vector{Int}};
+    method::Symbol=:leave_one_out, 
+    selection::Vector{Int}=collect(1:length(features)),
+    feats::Int=20,
+    trees::Int=40)
     out = nothing
     for i=selection
         println("evaluating $i")
@@ -35,9 +38,8 @@ function cross_validate(features::Vector{Matrix{Float64}},
         #println(size(features[i]))
         #println(size(labels[i]))
 
-        out = validate(F, L, features[i], labels[i][1:size(features[i],2)], trees=40,
-        feats=20,
-        doPlot=i)
+        out = validate(F, L, features[i], labels[i][1:size(features[i],2)],
+        trees=trees, feats=feats, doPlot=i)
     end
     out
 end

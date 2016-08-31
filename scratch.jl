@@ -169,9 +169,9 @@ end
 
 #results = collectThemAll();
 #save("patients-april.jld", "results", results)
-results = load("patients-april.jld")["results"]
 
-if(true)
+if(false)
+    results = load("patients-april.jld")["results"]
     Feats  = Matrix{Float64}[]
     Labels = Vector{Int}[]
     for i=1:26
@@ -200,19 +200,41 @@ if(false)
     Classified)
 end
 
-cf = make_conf(vcat(Expected...), vcat(Classified...), [1,2,3,4,5])
-println("total mean accuracy = ", 100sum(diag(cf))/sum(cf), "%")
-for i=1:26
-    cf = make_conf(Expected[i], Classified[i], [1,2,3,4,5])
-    cf2 = make_conf(Expected[i], Classified[i], [1,2,4,5])
-    println("sub $i mean accuracy = ", round(Int, 100sum(diag(cf))/sum(cf)), "% or ",
-    round(Int, 100sum(diag(cf2))/sum(cf2)), "% (base ", round(Int,
-    100mean(Expected[i].==Classified[i])), "%)")
+if(false)
+    cf = make_conf(vcat(Expected...), vcat(Classified...), [1,2,3,4,5])
+    println("total mean accuracy = ", 100sum(diag(cf))/sum(cf), "%")
+    for i=1:26
+        cf = make_conf(Expected[i], Classified[i], [1,2,3,4,5])
+        cf2 = make_conf(Expected[i], Classified[i], [1,2,4,5])
+        println("sub $i mean accuracy = ", round(Int, 100sum(diag(cf))/sum(cf)), "% or ",
+        round(Int, 100sum(diag(cf2))/sum(cf2)), "% (base ", round(Int,
+        100mean(Expected[i].==Classified[i])), "%)")
+    end
 end
 
+oo = nothing
+if(false)
+    println("[INFO] Start")
+    #Work on the subjects database from dreams
+    Feats  = Matrix{Float64}[]
+    Labels = Vector{Int}[]
+    for i=1:20
+        f = readcsv("/home/mark/current/feat-time-subject$i.csv")
+        ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
+        N = size(f,1)
+        M = length(ll)
+        l = map(Int,ll[round(Int, linspace(1,M,N))])
+        push!(Feats, f')
+        push!(Labels, l)
+    end
+    oo = cross_validate(Feats, Labels, feats=3, trees=100)
+    println("[INFO] Stop")
+end
 
 ###############################
 #   DREAMS Subject Database   #
+# (I think this is patients   #
+#  subjects only has 20)      #
 ###############################
 
 #50 trees 20 feats
@@ -388,4 +410,30 @@ phd_cover =
  24 0.6766091051805337
  25 0.608786610878661
  26 0.7630434782608696]
+
+
+ #Actually subjects
+
+ #100 tree 3 feat
+ time_domain_sub =
+ [1 0.6607700312174818
+ 2 0.7756345177664975
+ 3 0.6785714285714286
+ 4 0.6704653371320038
+ 5 0.6826462128475551
+ 6 0.7041123370110332
+ 7 0.7766798418972332
+ 8 0.6329896907216495
+ 9 0.7770814682184423
+ 10 0.5281007751937985
+ 11 0.6825396825396826
+ 12 0.7127991675338189
+ 13 0.6876687668766877
+ 14 0.6862549800796812
+ 15 0.7035714285714286
+ 16 0.6659772492244054
+ 17 0.7041123370110332
+ 18 0.7404505386875612
+ 19 0.5179090029041626
+ 20 0.7187772925764192]
 
