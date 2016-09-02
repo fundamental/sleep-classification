@@ -62,6 +62,39 @@ function validate(train::Matrix{Float64}, train_label::Vector{Int},
     out
 end
 
+"""
+Validate across datasets
+"""
+function validate_across(train::Vector{Matrix{Float64}},
+                         train_label::Vector{Vector{Int}},
+                         test::Vector{Matrix{Float64}},
+                         test_label::Vector{Vector{Int}};
+                         trees::Int=40,
+                         feats::Int=3,
+                         doPlot=nothing)
+    F = train[1]
+    L = train_label[1]
+    N = length(train)
+    M = length(test)
+    for i=2:N
+        F = hcat(F, train[i])
+        L = vcat(L, train_label[i])
+    end
+    model = build_forest(L, F', feats, trees)#, 200, 20, 0.5)
+    for i=1:M
+        out = apply_forest(model, test[i]')
+        #println("classification accuracy = ", mean(out.==test_label[i]))
+        println(i, " ", mean(out.==test_label[i]))
+        if(doPlot != nothing)
+            figure(doPlot)
+            PyPlot.clf();
+            plot(test_label[i])
+            plot(out+0.1)
+        end
+        out
+    end
+end
+
 
 """
 Create a confusion matrix

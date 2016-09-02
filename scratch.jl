@@ -218,9 +218,10 @@ if(false)
     #Work on the subjects database from dreams
     Feats  = Matrix{Float64}[]
     Labels = Vector{Int}[]
-    for i=1:20
-        f = readcsv("/home/mark/current/feat-time-subject$i.csv")
-        ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
+    for i=1:27
+        f = readcsv("/home/mark/current/feat-time-patient$i.csv")
+        ll = readcsv("/home/mark/current/general-sleep/patients/HypnogramAASM_patient$i.txt")[2:end]
+        #ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
         N = size(f,1)
         M = length(ll)
         l = map(Int,ll[round(Int, linspace(1,M,N))])
@@ -228,6 +229,38 @@ if(false)
         push!(Labels, l)
     end
     oo = cross_validate(Feats, Labels, feats=3, trees=100)
+    println("[INFO] Stop")
+end
+if(false)
+    println("[INFO] Start")
+    #work across different DREAMS databases
+    FeatsA  = Matrix{Float64}[]
+    LabelsA = Vector{Int}[]
+    FeatsB  = Matrix{Float64}[]
+    LabelsB = Vector{Int}[]
+    for i=1:27
+        f = readcsv("/home/mark/current/feat-time-patient$i.csv")
+        ll = readcsv("/home/mark/current/general-sleep/patients/HypnogramAASM_patient$i.txt")[2:end]
+        #ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
+        N = size(f,1)
+        M = length(ll)
+        l = map(Int,ll[round(Int, linspace(1,M,N))])
+        push!(FeatsA,  f')
+        push!(LabelsA, l)
+    end
+    for i=1:20
+        f  = readcsv("/home/mark/current/feat-time-subject$i.csv")
+        ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
+        N = size(f,1)
+        M = length(ll)
+        l = map(Int,ll[round(Int, linspace(1,M,N))])
+        push!(FeatsB,  f')
+        push!(LabelsB, l)
+    end
+    println("time_train_patient_test_subject")
+    oo = validate_across(FeatsA, LabelsA, FeatsB, LabelsB, feats=3, trees=100)
+    println("time_train_subject_test_patient")
+    oo = validate_across(FeatsB, LabelsB, FeatsA, LabelsA, feats=3, trees=100)
     println("[INFO] Stop")
 end
 
@@ -411,6 +444,68 @@ phd_cover =
  25 0.608786610878661
  26 0.7630434782608696]
 
+ #40 tree 3 feat
+ time_domain_main = [
+1 0.7684319833852544
+2 0.572265625
+3 0.5589041095890411
+4 0.6794625719769674
+5 0.5442786069651742
+6 0.7045908183632734
+7 0.2998986828774063
+8 0.4794040315512708
+9 0.6801579466929911
+10 0.7076780758556892
+11 0.6431881371640408
+12 0.6432015429122468
+13 0.5870901639344263
+14 0.6475563909774437
+15 0.5789473684210527
+16 0.6279475982532751
+17 0.2642857142857143
+18 0.58
+19 0.6889507892293407
+20 0.3262411347517731
+21 0.3434433541480821
+22 0.5755656108597285
+23 0.7671794871794871
+24 0.5782092772384034
+25 0.3985171455050973
+26 0.7552447552447552
+27 0.6076779026217228]
+
+#100 tree 3 feat
+time_domain_trees = [
+1 0.7757009345794392
+2 0.6416015625
+3 0.5707762557077626
+4 0.6833013435700576
+5 0.5263681592039801
+6 0.7095808383233533
+7 0.3069908814589666
+8 0.5004382120946538
+9 0.6801579466929911
+10 0.7160037002775208
+11 0.6459684893419834
+12 0.6451301832208293
+13 0.5973360655737705
+14 0.6400375939849624
+15 0.5789473684210527
+16 0.6296943231441048
+17 0.26160714285714287
+18 0.5904
+19 0.6898792943361188
+20 0.2968591691995947
+21 0.3434433541480821
+22 0.5683257918552036
+23 0.7651282051282051
+24 0.5836030204962244
+25 0.4198331788693234
+26 0.7532467532467533
+27 0.5814606741573034]
+
+
+
 
  #Actually subjects
 
@@ -436,4 +531,59 @@ phd_cover =
  18 0.7404505386875612
  19 0.5179090029041626
  20 0.7187772925764192]
+
+
+ #Cross dataset
+ #feat=3 tree=100
+ time_train_patient_test_subject = [
+ 1 0.5639958376690947
+ 2 0.6812182741116751
+ 3 0.41964285714285715
+ 4 0.6505223171889839
+ 5 0.7526366251198466
+ 6 0.6429287863590772
+ 7 0.7371541501976284
+ 8 0.6092783505154639
+ 9 0.6472694717994628
+ 10 0.4166666666666667
+ 11 0.4751984126984127
+ 12 0.6566077003121749
+ 13 0.47074707470747074
+ 14 0.7380478087649402
+ 15 0.32976190476190476
+ 16 0.5718717683557394
+ 17 0.6880641925777332
+ 18 0.7463271302644466
+ 19 0.6786060019361084
+ 20 0.6445414847161572]
+
+ #feat=3 tree=100
+ time_train_subject_test_patient = 
+ [1 0.671858774662513
+ 2 0.6943359375
+ 3 0.5844748858447488
+ 4 0.7591170825335892
+ 5 0.6079601990049751
+ 6 0.48602794411177647
+ 7 0.3789260385005066
+ 8 0.45135845749342685
+ 9 0.736426456071076
+ 10 0.5124884366327475
+ 11 0.6626506024096386
+ 12 0.5978784956605593
+ 13 0.6618852459016393
+ 14 0.6541353383458647
+ 15 0.56
+ 16 0.5851528384279476
+ 17 0.26517857142857143
+ 18 0.544
+ 19 0.6973073351903436
+ 20 0.21073961499493415
+ 21 0.6735057983942908
+ 22 0.6470588235294118
+ 23 0.7271794871794872
+ 24 0.5587918015102481
+ 25 0.4902687673772011
+ 26 0.6843156843156843
+ 27 0.5187265917602997]
 
