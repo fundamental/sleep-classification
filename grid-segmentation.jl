@@ -380,7 +380,7 @@ end
 Estimate Which Transitions are likely to be real changepoints
 When in doubt oversegment
 """
-function doLikelyHoodEst(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
+function doLikelyHoodEst(SubjectID::Union{Int,String}, workingDir::ASCIIString, doPlot::Bool)
     ll::Vector{Int}    = round(Int,readcsv("$workingDir/Dejunkedlabels$SubjectID.csv")[:])
     I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 

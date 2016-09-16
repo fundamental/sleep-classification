@@ -12,7 +12,7 @@ function cross_validate(features::Vector{Matrix{Float64}},
     feats::Int=20,
     trees::Int=40)
     out = nothing
-    for i=selection
+    for i=selection#[50:end]
         println("evaluating $i")
         F = nothing
         L = nothing

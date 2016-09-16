@@ -170,13 +170,45 @@ function doTimeFeats()
     end
 end
 
-files = readdir("/home/mark/current/general-sleep/physionet/non-edf/")
+function cheap_upsample(x)
+    N = length(x)*2
+    y = zeros(Float64, N)
+    for i=1:N-1
+        if(i%2 == 1)
+            y[i] = x[Int((i+1)/2)]
+        else
+            ii = Int(i/2)
+            y[i] = 0.5*(x[ii]+x[ii+1])
+        end
+    end
+    y
+end
+
+froot = "/home/mark/current/general-sleep/physionet/non-edf/"
+files = readdir(froot)
 re    = r"\.h5$"
-for i=files
+for ind=1:length(files)
+    i = files[ind]
     if(match(re,i) != nothing)
-        println(i)
+        h = h5open(string(froot,i))
+        dat = cheap_upsample(read(h["1"]))
+
+        println("Processing ", i)
+        println("   Starting Process @ ", now())
+        println("   Hours To Process = ", length(dat)/200/60/60, " hours")
+        if(isfile("data/feat-time-physionet-$i.csv"))
+            println("       Skipping Already Processed File...")
+        else
+            println("       Working on file ", ind, "/", length(files))
+            oo = doTimeSimp(dat, 30*200)
+            writecsv("data/feat-time-physionet-$i.csv", oo)
+        end
+        close(h)
     end
 end
+
+#Keep in mind that physionet is 100Hz data unlike DREAMS's 200Hz
+#just cheaply resample?
 
 #obtain channel 1 for fpz-cz
 #process

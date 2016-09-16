@@ -199,7 +199,7 @@ end
 """
 Identify when rectangles intersect
 """
-function intersect(r1::Vector{Int}, r2::Vector{Int})
+function rect_intersect(r1::Vector{Int}, r2::Vector{Int})
     intervalIntersect(r1[1:2],r2[1:2]) && intervalIntersect(r1[3:4],r2[3:4])
 end
 
@@ -207,7 +207,7 @@ function calculateCover(Cover, rect, prev, damage)
     if(prev == 0)
         return 0
     end
-    if(!intersect(rect, damage))
+    if(!rect_intersect(rect, damage))
         return prev
     end
     score_ = 0
@@ -229,8 +229,8 @@ output - a collection of rectangles in the form
  [x1 x2 y1 y2]]
 """
 function rectSegment(Img::BitArray{2}, figNum::Int=100;
-    workingDir::ASCIIString="tmp", doPlot::Bool=false,
-    state::ASCIIString="unknown", SubjectID::Int=0)
+    workingDir::String="tmp", doPlot::Bool=false,
+    state::String="unknown", SubjectID::Union{Int,String}=0)
     R = Vector{Vector{Int}}()
     #tic()
     for i=1:4096
@@ -290,7 +290,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100;
         #title("Cover for $state")
         PyPlot.clf()
         imshow(Cover, aspect="auto", interpolation="none")
-        imwrite(float64(Cover), "$workingDir/cover$state$SubjectID.png")
+        imwrite(map(Float64,Cover), "$workingDir/cover$state$SubjectID.png")
     end
 
     #figure(3)
@@ -335,7 +335,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100;
     result
 end
 
-function doRectSegment(SubjectID::Int, state::ASCIIString, figNum::Int, workingDir::ASCIIString, doPlot::Bool)
+function doRectSegment(SubjectID::Union{Int,String}, state::ASCIIString, figNum::Int, workingDir::ASCIIString, doPlot::Bool)
     #File = "before-labeling.png"
     #File = "real-example.png"
     ##File = "real-example2.png"

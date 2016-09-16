@@ -47,7 +47,9 @@ function histNormalize(img)
 end
 
 function doMakeThresholds(SubjectID; workingDir="tmp", doPlot=false)
-    I = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
+    imfile = "$workingDir/DejunkedSpectra$SubjectID.png"
+    println("[INFO] reading \"$imfile\"")
+    I = PyPlot.imread(imfile)
 
     #figure(1)
     #imshow(I, aspect="auto", interpolation="none")
@@ -263,6 +265,240 @@ if(false)
     oo = validate_across(FeatsB, LabelsB, FeatsA, LabelsA, feats=3, trees=100)
     println("[INFO] Stop")
 end
+function convert_labels(fname)
+    #c = readcsv("ST7011JP-Hypnogram_annotations.txt")
+    #c = readcsv("ST7082JW-Hypnogram_annotations.txt")
+    c = readcsv(fname)
+    #create a 10 second epoc labeling sequence
+    relabel = Dict{ASCIIString, Int}()
+    relabel["Movement time"] = 5
+    relabel["Sleep stage ?"] = 5
+    relabel["Sleep stage W"] = 5
+    relabel["Sleep stage R"] = 4
+    relabel["Sleep stage 4"] = 1
+    relabel["Sleep stage 3"] = 1
+    relabel["Sleep stage 2"] = 2
+    relabel["Sleep stage 1"] = 3
+
+    label = Int[]
+
+    for j=1:(c[2,1]/10)
+        push!(label, 5)
+    end
+    for i=2:size(c,1)
+        for j=1:(c[i,2]/10)
+            push!(label, relabel[c[i,3]])
+        end
+    end
+    label
+end
+
+function get_match(opts, re)
+    for o=opts
+        if(match(re, o) != nothing)
+            return o
+        end
+    end
+    nothing
+end
+
+if(false)
+    files = readdir("data")
+    an    = "/home/mark/current/general-sleep/physionet/non-edf/"
+    ann   = readdir(an)
+    re    = r"feat-time-physionet-(.*).h5.csv"
+    Labels = Vector{Int}[]
+    Feats  = Matrix{Float64}[]
+
+    for f=files
+        ff = match(re, f)[1]
+        x =get_match(ann, Regex("$ff.*-Hypnogram_annotations.txt"))
+        if(x == nothing)
+            continue
+        end
+        lab_file = string(an,x)
+        dat_file = string("data/", f)
+
+        ll = convert_labels(lab_file)
+        dd = readcsv(dat_file)
+        dd[isnan(dd)] = 0.0
+        N = size(dd,2)
+        M = length(ll)
+        l = map(Int,ll[round(Int, linspace(1,M,N))])
+        push!(Feats,  dd)
+        push!(Labels, l)
+    end
+    oo = cross_validate(Feats, Labels, feats=3, trees=40)
+
+end
+
+if(false)
+    println("[INFO] Start")
+    #work across different DREAMS databases
+    FeatsA  = Matrix{Float64}[]
+    LabelsA = Vector{Int}[]
+    FeatsB  = Matrix{Float64}[]
+    LabelsB = Vector{Int}[]
+    for i=1:27
+        f = readcsv("/home/mark/current/feat-time-patient$i.csv")
+        ll = readcsv("/home/mark/current/general-sleep/patients/HypnogramAASM_patient$i.txt")[2:end]
+        #ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
+        N = size(f,1)
+        M = length(ll)
+        l = map(Int,ll[round(Int, linspace(1,M,N))])
+        push!(FeatsA,  f')
+        push!(LabelsA, l)
+    end
+    for i=1:20
+        f  = readcsv("/home/mark/current/feat-time-subject$i.csv")
+        ll = readcsv("/home/mark/current/general-sleep/HypnogramAASM_subject$i.txt")[2:end]
+        N = size(f,1)
+        M = length(ll)
+        l = map(Int,ll[round(Int, linspace(1,M,N))])
+        push!(FeatsB,  f')
+        push!(LabelsB, l)
+    end
+    println("time_train_patient_test_subject")
+    oo = validate_across(FeatsA, LabelsA, FeatsB, LabelsB, feats=3, trees=100)
+    println("time_train_subject_test_patient")
+    oo = validate_across(FeatsB, LabelsB, FeatsA, LabelsA, feats=3, trees=100)
+    println("[INFO] Stop")
+end
+
+#now to build the physionet data with the dissertation method
+if(false)
+    subs = data_range()
+    PyPlot.close("all")
+    #PyPlot.clf()
+    skip = true
+    for i=subs
+        files = readdir("physionet")
+        r = Regex("Dejunkedlab.*$i.*")
+        if(any(x->(nothing!=match(r, x)), files) || i == "ST7221")
+        else
+            skip = false
+        end
+        if(skip)
+            println("[INFO] Skipping $i")
+            continue
+        end
+        runAquisition(i, "physionet/", true)
+        doMakeThresholds(i,doPlot=true,workingDir="physionet/")
+        doRectSegment(i, "low",  100, "physionet/", true)
+        doRectSegment(i, "med",  200, "physionet/", true)
+        doRectSegment(i, "high", 300, "physionet/", true)
+        doLikelyHoodEst(i,"physionet/", true)
+        viewStuff(i, "physionet/")
+    end
+end
+
+#XXX fix the labels for the thesis method
+if(false)
+    subs = data_range()
+    PyPlot.close("all")
+    #PyPlot.clf()
+    skip = false
+    for i=subs
+        skip = false
+        files = readdir("physionet")
+        r = Regex("Dejunkedlab.*$i.*")
+        if(i == "ST7221")
+            skip = true
+        else
+            skip = false
+        end
+        if(skip)
+            println("[INFO] Skipping $i")
+            continue
+        else
+            println("[INFO] Processing $i")
+        end
+        SubjectID = i
+        base = "/home/mark/current/general-sleep/physionet/non-edf/"
+        x  = get_match(readdir(base), Regex("$SubjectID.*-Hypnogram_annotations.txt"))
+        ll = convert_labels(string(base,x))
+        gs = readcsv("./physionet/Dejunked$SubjectID-cols.csv")
+        ol = readcsv("./physionet/Dejunkedlabels$SubjectID.csv")
+        println("   [INFO] mapping ", length(ll), " to ", length(gs))
+        sec_dat = length(gs)*4096/200
+        sec_lab = length(ll)*10
+        println("   [INFO] mapping ", sec_lab, " sec to ", sec_dat, " sec")
+        nll = zeros(Int, length(gs))
+        for i=1:length(nll)
+            sec    = (i-0.5)*4096/200
+            llpos  = round(Int, sec/10)
+            if(llpos == 0)
+                nll[i] = 5
+            elseif(llpos <= length(ll))
+                nll[i] = ll[llpos]
+            else
+                nll[i] = 5
+            end
+        end
+        writecsv("./physionet/Dejunkedlabels$SubjectID.csv", nll[find(gs)])
+        #figure(10);
+        #plot(ol            + 0.01randn(length(ol)), color="b")
+        #plot(nll[find(gs)] + 0.01randn(length(ol)), color="g")
+        #axis("tight")
+        #figure(11);
+        #i = PyPlot.imread("./physionet/DejunkedSpectra$SubjectID.png")
+        #imshow(i[1:1000,:],aspect="auto",interpolation="none");
+
+
+        #runAquisition(i, "physionet/", true)
+        #doMakeThresholds(i,doPlot=true,workingDir="physionet/")
+        #doRectSegment(i, "low",  100, "physionet/", true)
+        #doRectSegment(i, "med",  200, "physionet/", true)
+        #doRectSegment(i, "high", 300, "physionet/", true)
+        #doLikelyHoodEst(i,"physionet/", true)
+        #viewStuff(i, "physionet/")
+    end
+end
+
+if(false)
+    println("[INFO] Start")
+    ##Work on the subjects database from dreams
+    #Feats  = Matrix{Float64}[]
+    #Labels = Vector{Int}[]
+    #subs   = data_range()
+    #subs2  = String[]
+    #for i=subs
+    #    if(i != "ST7221")
+    #        push!(subs2, i)
+    #    end
+    #end
+
+    #for i=subs2
+    #    push!(Feats, viewStuff(i, "physionet/",false)[5])
+    #    push!(Labels, map(Int,readcsv("./physionet/Dejunkedlabels$i.csv")[:]))
+    #end
+    #save("physionet-september-thesis-feats-labels-fixed-labels.jld",
+    #     "Feats", Feats, "Labels", Labels)
+    x = load("physionet-september-thesis-feats-labels-fixed-labels.jld");
+    Feats  = x["Feats"]
+    Labels = x["Labels"]
+
+    println("[INFO] Running validation")
+    oo = cross_validate(Feats[1:37], Labels[1:37], feats=20, trees=40)
+    println("[INFO] Stop")
+end
+
+#capture data from physionet trial
+#Truth = nothing
+#Class = nothing
+if(false)
+    Truth = Vector{Int}[]
+    Class = Vector{Int}[]
+    for i=1:37
+        figure(i)
+        x = gca()
+        push!(Truth, map(Int, x[:lines][1][:get_ydata]()))
+        push!(Class, map(xx->round(Int,xx), x[:lines][2][:get_ydata]()))
+    end
+    save("physionet-september-thesis-out-1-37.jld",
+        "Truth", Truth, "Class", Class)
+end
+
 
 ###############################
 #   DREAMS Subject Database   #
@@ -587,3 +823,249 @@ time_domain_trees = [
  26 0.6843156843156843
  27 0.5187265917602997]
 
+
+ #Physionet
+
+#40 tree 3 feat (full recordings) (likely buggy labels)
+physionet_time_all =
+ [1 0.7483018867924528
+ 2 0.7014134275618374
+ 3 0.7612419700214133
+ 4 0.7357894736842105
+ 5 0.6911554921540656
+ 6 0.7333091436865021
+ 7 0.7297872340425532
+ 8 0.7569546120058566
+ 9 0.6859922178988327
+ 10 0.7363896848137536
+ 11 0.7461425422483468
+ 12 0.7615823235923022
+ 13 0.7671480144404332
+ 14 0.7784452296819788
+ 15 0.49110320284697506
+ 16 0.7422382671480144
+ 17 0.7238912732474965
+ 18 0.16818526955201216
+ 19 0.7192532942898975
+ 20 0.7218334499650105
+ 21 0.7209558823529412
+ 22 0.7375787263820853
+ 23 0.6884935654806964
+ 24 0.802158273381295
+ 25 0.7455132806891601
+ 26 0.6047582501918649
+ 27 0.7914001421464109
+ 28 0.7728592162554426
+ 29 0.7440519105984138
+ 30 0.6278625954198473
+ 31 0.7643156424581006
+ 32 0.6846915460776847
+ 33 0.7409156976744186
+ 34 0.650984682713348
+ 35 0.6651982378854625
+ 36 0.7180696661828737
+ 37 0.7712878254750176
+ 38 0.6272530641672674
+ 39 0.6532567049808429
+ 40 0.3979933110367893
+ 41 0.34536585365853656
+ 42 0.4479768786127168
+ 43 0.4140767824497258
+ 44 0.44608294930875575
+ 45 0.3943217665615142
+ 46 0.3551912568306011
+ 47 0.4657534246575342
+ 48 0.49038461538461536
+ 49 0.23928293063133282
+ 50 0.37462537462537465
+ 51 0.3796680497925311
+ 52 0.367816091954023
+ 53 0.42244525547445255
+ 54 0.5443298969072164
+ 55 0.38235294117647056
+ 56 0.46182152713891444]
+
+#20 feat 40 tree (buggy labels) [wake/sleep accuracy is excellent]
+#while I didn't record it wake/sleep should be something akin to 99%
+physionet_phd_all = [
+1 0.7795296632816675
+2 0.7789972561736094
+3 0.813659793814433
+4 0.850802407221665
+5 0.8446651387827858
+6 0.8088541666666667
+7 0.8599590373783922
+8 0.8054011119936457
+9 0.7424412094064949
+10 0.7752721617418351
+11 0.8184696569920844
+12 0.7883530015392509
+13 0.8571428571428571
+14 0.8279919879819729
+15 0.8159979555328393
+16 0.7979193758127439
+17 0.7755153983201832
+18 0.7074923970141
+19 0.7910761154855643
+20 0.809079445145019
+21 0.807898979043525
+22 0.8604118993135011
+23 0.7649769585253456
+24 0.8527211761671395
+25 0.7946728730281872
+26 0.7135747857340338
+27 0.839455432828153
+28 0.7920868890612878
+29 0.799893133849853
+30 0.7581558371528714
+31 0.8124843945068664
+32 0.714560968896229
+33 0.8184713375796179
+34 0.7605152471083071
+35 0.714248159831756
+36 0.7935233160621762
+37 0.8293177783413644
+38 0.6716378859236002
+39 0.6983379501385042
+40 0.4168848167539267
+41 0.44452887537993924
+42 0.5797610681658468
+43 0.4965229485396384
+44 0.5536568694463432
+45 0.573655494933749
+46 0.45148247978436656
+47 0.5257731958762887
+48 0.6244813278008299
+49 0.31148696264975334
+50 0.43468634686346863
+51 0.5045112781954887
+52 0.5171428571428571
+53 0.524653312788906
+54 0.6073850791258478
+55 0.5558698727015559
+56 0.5991902834008097]
+
+#38 to end, 40 tree, 20 feat, phd meth
+physionet_phd_short = 
+[1 0.8767660910518054
+2 0.9293628808864266
+3 0.6341623036649214
+4 0.763677811550152
+5 0.7779339423752635
+6 0.7670375521557719
+7 0.8851674641148325
+8 0.6827747466874513
+9 0.7587601078167115
+10 0.8136966126656848
+11 0.7683264177040111
+12 0.6215644820295984
+13 0.48929889298892987
+14 0.6406015037593985
+15 0.7357142857142858
+16 0.8936825885978429
+17 0.8078372268274303
+18 0.7637906647807637
+19 0.7206477732793523]
+
+#1:37, 40 tree, 20 feat, phd meth
+physionet_phd_long = [
+1 0.9476215927311598
+2 0.9274133200299326
+3 0.9342783505154639
+4 0.9192577733199598
+5 0.9299719887955182
+6 0.9260416666666667
+7 0.9408602150537635
+8 0.9475774424146147
+9 0.8863381858902576
+10 0.8970969414204251
+11 0.9430079155672824
+12 0.922267829656234
+13 0.9555670369413588
+14 0.927891837756635
+15 0.935854842831587
+16 0.9396618985695708
+17 0.8938661236955968
+18 0.8949405584738733
+19 0.9083989501312336
+20 0.8872635561160152
+21 0.9425040300913488
+22 0.9420289855072463
+23 0.7769043101111412
+24 0.9551199380964663
+25 0.9345746056374451
+26 0.8874758086812276
+27 0.9319291035191369
+28 0.9412981639513835
+29 0.9503072401816725
+30 0.9371798328390402
+31 0.921598002496879
+32 0.9099917423616846
+33 0.8842887473460722
+34 0.8554153522607781
+35 0.8472660357518401
+36 0.9106217616580311
+37 0.9013441541973117]
+
+
+
+mapping = [
+1  "SC4001"
+2  "SC4002"
+3  "SC4011"
+4  "SC4012"
+5  "SC4021"
+6  "SC4022"
+7  "SC4031"
+8  "SC4032"
+9  "SC4041"
+10 "SC4042"
+11 "SC4051"
+12 "SC4052"
+13 "SC4061"
+14 "SC4062"
+15 "SC4071"
+16 "SC4072"
+17 "SC4081"
+18 "SC4082"
+19 "SC4091"
+20 "SC4092"
+21 "SC4101"
+22 "SC4102"
+23 "SC4111"
+24 "SC4112"
+25 "SC4121"
+26 "SC4122"
+27 "SC4131"
+28 "SC4141"
+29 "SC4142"
+30 "SC4151"
+31 "SC4152"
+32 "SC4161"
+33 "SC4162"
+34 "SC4171"
+35 "SC4172"
+36 "SC4181"
+37 "SC4182"
+38 "SC4191"
+39 "SC4192"
+40 "ST7011"
+41 "ST7022"
+42 "ST7041"
+43 "ST7052"
+44 "ST7061"
+45 "ST7082"
+46 "ST7101"
+47 "ST7112"
+48 "ST7121"
+49 "ST7151"
+50 "ST7162"
+51 "ST7171"
+52 "ST7182"
+53 "ST7192"
+54 "ST7201"
+55 "ST7212"
+56 "ST7221"#I think this is the one that's ommited?
+57 "ST7241"]
+
+nothing
