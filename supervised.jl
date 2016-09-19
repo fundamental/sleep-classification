@@ -14,6 +14,9 @@ function cross_validate(features::Vector{Matrix{Float64}},
     out = nothing
     for i=selection#[50:end]
         println("evaluating $i")
+        if(i == 1)
+            continue
+        end
         F = nothing
         L = nothing
         if(i == 1)

@@ -455,28 +455,29 @@ if(false)
     end
 end
 
-if(false)
+if(true)
     println("[INFO] Start")
     ##Work on the subjects database from dreams
-    #Feats  = Matrix{Float64}[]
-    #Labels = Vector{Int}[]
-    #subs   = data_range()
-    #subs2  = String[]
-    #for i=subs
-    #    if(i != "ST7221")
-    #        push!(subs2, i)
-    #    end
-    #end
+    Feats  = Matrix{Float64}[]
+    Labels = Vector{Int}[]
+    subs   = data_range()
+    subs2  = String[]
+    for i=subs
+        if(i != "ST7221")
+            push!(subs2, i)
+        end
+    end
 
-    #for i=subs2
-    #    push!(Feats, viewStuff(i, "physionet/",false)[5])
-    #    push!(Labels, map(Int,readcsv("./physionet/Dejunkedlabels$i.csv")[:]))
-    #end
+    for i=subs2
+        #push!(Feats, viewStuff(i, "physionet/",false)[5])
+        push!(Feats, PyPlot.imread("./physionet/DejunkedSpectra$i.png")[1:1000,:])
+        push!(Labels, map(Int,readcsv("./physionet/Dejunkedlabels$i.csv")[:]))
+    end
     #save("physionet-september-thesis-feats-labels-fixed-labels.jld",
     #     "Feats", Feats, "Labels", Labels)
-    x = load("physionet-september-thesis-feats-labels-fixed-labels.jld");
-    Feats  = x["Feats"]
-    Labels = x["Labels"]
+    #x = load("physionet-september-thesis-feats-labels-fixed-labels.jld");
+    #Feats  = x["Feats"]
+    #Labels = x["Labels"]
 
     println("[INFO] Running validation")
     oo = cross_validate(Feats[1:37], Labels[1:37], feats=20, trees=40)
@@ -1006,6 +1007,33 @@ physionet_phd_long = [
 35 0.8472660357518401
 36 0.9106217616580311
 37 0.9013441541973117]
+
+#0.9134152859433458
+#evaluating 2
+#classification accuracy = 0.8807682713893739
+#evaluating 3
+#classification accuracy = 0.8502577319587629
+#evaluating 4
+#classification accuracy = 0.8224674022066198
+#evaluating 5
+#classification accuracy = 0.8856633562515915
+#evaluating 6
+#classification accuracy = 0.8497395833333333
+#evaluating 7
+#classification accuracy = 0.8942652329749103
+#evaluating 8
+#classification accuracy = 0.8739740534815992
+#evaluating 9
+#classification accuracy = 0.8205487122060471
+#evaluating 10
+#classification accuracy = 0.8455158113011924
+#evaluating 11
+#classification accuracy = 0.879155672823219
+#evaluating 12
+#classification accuracy = 0.8296562339661365
+#evaluating 13
+#classification accuracy = 0.946267114440713
+
 
 
 
