@@ -199,7 +199,7 @@ Arguments:
 - workingDir - the directory to save intermediate data to
 - doPlot     - plot intermediate results
 """
-function runAquisition(SubjectID::Union{Int,String}, workingDir::ASCIIString, doPlot::Bool)
+function runAquisition(SubjectID::Union{Int,String}, workingDir::String, doPlot::Bool)
     Data = import_data(SubjectID)
     (Spectra, LSpectra) = generate_spectra(Data, SubjectID, doPlot)
     (goodElms,seq) = robustSpikeElimination(Spectra)

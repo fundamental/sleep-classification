@@ -166,7 +166,7 @@ end
 """
 Generate thresholded versions of the input image
 """
-function doMakeThresholds(SubjectID::Int, workingDir::ASCIIString, doPlot::Bool)
+function doMakeThresholds(SubjectID::Int, workingDir::String, doPlot::Bool)
     I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 
     rmed = recursiveMedian(I)

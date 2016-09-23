@@ -335,7 +335,7 @@ function rectSegment(Img::BitArray{2}, figNum::Int=100;
     result
 end
 
-function doRectSegment(SubjectID::Union{Int,String}, state::ASCIIString, figNum::Int, workingDir::ASCIIString, doPlot::Bool)
+function doRectSegment(SubjectID::Union{Int,String}, state::String, figNum::Int, workingDir::String, doPlot::Bool)
     #File = "before-labeling.png"
     #File = "real-example.png"
     ##File = "real-example2.png"

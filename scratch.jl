@@ -270,7 +270,7 @@ function convert_labels(fname)
     #c = readcsv("ST7082JW-Hypnogram_annotations.txt")
     c = readcsv(fname)
     #create a 10 second epoc labeling sequence
-    relabel = Dict{ASCIIString, Int}()
+    relabel = Dict{String, Int}()
     relabel["Movement time"] = 5
     relabel["Sleep stage ?"] = 5
     relabel["Sleep stage W"] = 5

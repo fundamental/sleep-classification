@@ -297,7 +297,7 @@ function windowedOperator{T}(data::Vector{T}, op, window::Int)
 
 end
 
-function likelyHoodSummaryPlot(title_string::ASCIIString, d1r, d2r, d3r,
+function likelyHoodSummaryPlot(title_string::String, d1r, d2r, d3r,
     ll::Vector{Int}, figureId::Int)
     figure(figureId)
     PyPlot.clf();
@@ -380,7 +380,7 @@ end
 Estimate Which Transitions are likely to be real changepoints
 When in doubt oversegment
 """
-function doLikelyHoodEst(SubjectID::Union{Int,String}, workingDir::ASCIIString, doPlot::Bool)
+function doLikelyHoodEst(SubjectID::Union{Int,String}, workingDir::String, doPlot::Bool)
     ll::Vector{Int}    = round(Int,readcsv("$workingDir/Dejunkedlabels$SubjectID.csv")[:])
     I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 
