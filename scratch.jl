@@ -480,23 +480,23 @@ if(false)
     #Labels = x["Labels"]
 
     println("[INFO] Running validation")
-    oo = cross_validate(Feats[1:37], Labels[1:37], feats=20, trees=40)
+    oo = cross_validate(Feats[38:end], Labels[38:end], feats=20, trees=40)
     println("[INFO] Stop")
 end
 
 #capture data from physionet trial
-#Truth = nothing
-#Class = nothing
-if(false)
+Truth = nothing
+Class = nothing
+if(true)
     Truth = Vector{Int}[]
     Class = Vector{Int}[]
-    for i=1:37
+    for i=1:19
         figure(i)
         x = gca()
         push!(Truth, map(Int, x[:lines][1][:get_ydata]()))
         push!(Class, map(xx->round(Int,xx), x[:lines][2][:get_ydata]()))
     end
-    save("physionet-september-thesis-out-1-37.jld",
+    save("physionet-september-raw-out-38-56.jld",
         "Truth", Truth, "Class", Class)
 end
 
@@ -1047,6 +1047,27 @@ physionet_raw_long = [
 36 0.8893782383419689
 37 0.8780116662439766]
 
+physionet_raw_short = [
+1 0.8532182103610675
+2 0.7398891966759003
+3 0.5595549738219895
+4 0.2378419452887538
+5 0.7884750527055516
+6 0.6926286509040334
+7 0.7799043062200957
+8 0.5565081839438816
+9 0.612533692722372
+10 0.6266568483063328
+11 0.7627939142461964
+12 0.6300211416490487
+13 0.2051660516605166
+14 0.6390977443609023
+15 0.052142857142857144
+16 0.7727272727272727
+17 0.7264506405425772
+18 0.7114568599717115
+19 0.41228070175438597
+]
 
 mapping = [
 1  "SC4001"
