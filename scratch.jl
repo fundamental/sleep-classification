@@ -487,7 +487,7 @@ end
 #capture data from physionet trial
 Truth = nothing
 Class = nothing
-if(true)
+if(false)
     Truth = Vector{Int}[]
     Class = Vector{Int}[]
     for i=1:19

@@ -11,7 +11,7 @@ function cross_validate(features::Vector{Matrix{Float64}},
     selection::Vector{Int}=collect(1:length(features)),
     feats::Int=20,
     trees::Int=40)
-    out = nothing
+    out = Any[]
     for i=selection#[50:end]
         println("evaluating $i")
         F = nothing
@@ -38,8 +38,9 @@ function cross_validate(features::Vector{Matrix{Float64}},
         #println(size(features[i]))
         #println(size(labels[i]))
 
-        out = validate(F, L, features[i], labels[i][1:size(features[i],2)],
-        trees=trees, feats=feats, doPlot=i)
+        o = validate(F, L, features[i], labels[i][1:size(features[i],2)],
+        trees=trees, feats=feats, doPlot=nothing)
+        push!(out, o)
     end
     out
 end
