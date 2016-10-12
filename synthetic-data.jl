@@ -74,3 +74,27 @@ function make_irregular_grid(;modes::Int=6, width::Int=4000, height::Int=1000,
     return out
 end
 
+function pink_noise(x::Vector{Float64})
+    b0::Float64 = 0
+    b1::Float64 = 0
+    b2::Float64 = 0
+    b3::Float64 = 0
+    b4::Float64 = 0
+    b5::Float64 = 0
+    b6::Float64 = 0
+
+    pink::Vector{Float64} = zeros(length(x))
+    for i=1:length(x)
+        white = x[i]
+        #from music DSP
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        pink[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+        b6 = white * 0.115926; 
+    end
+    pink
+end
