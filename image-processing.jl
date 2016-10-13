@@ -166,7 +166,7 @@ end
 """
 Generate thresholded versions of the input image
 """
-function doMakeThresholds(SubjectID::Int, workingDir::String, doPlot::Bool)
+function doMakeThresholds(SubjectID::Union{String,Int}, workingDir::String, doPlot::Bool)
     I::Matrix{Float64} = PyPlot.imread("$workingDir/DejunkedSpectra$SubjectID.png")
 
     rmed = recursiveMedian(I)
@@ -194,7 +194,7 @@ function doMakeThresholds(SubjectID::Int, workingDir::String, doPlot::Bool)
         imshow(combined, aspect="auto", interpolation="none")
         figure(203)
         title("Histogram")
-        plt.hist(hn[:],128)
+        plt[:hist](hn[:],128)
     end
 
     nothing

@@ -180,6 +180,45 @@ function robustSpikeElimination(Spectra::Matrix{Float64})
     (good,mixed)
 end
 
+function get_match(opts, re)
+    for o=opts
+        if(match(re, o) != nothing)
+            return o
+        end
+    end
+    nothing
+end
+
+function convert_labels(fname)
+    #c = readcsv("ST7011JP-Hypnogram_annotations.txt")
+    #c = readcsv("ST7082JW-Hypnogram_annotations.txt")
+    c = readcsv(fname)
+    #create a 10 second epoc labeling sequence
+    relabel = Dict{String, Int}()
+    relabel["Movement time"] = 5
+    relabel["Sleep stage ?"] = 5
+    relabel["Sleep stage W"] = 5
+    relabel["Sleep stage R"] = 4
+    relabel["Sleep stage 4"] = 1
+    relabel["Sleep stage 3"] = 1
+    relabel["Sleep stage 2"] = 2
+    relabel["Sleep stage 1"] = 3
+
+    label = Int[]
+
+    println(fname)
+    println(c[2,1])
+    for j=1:(c[2,1]/10)
+        push!(label, 5)
+    end
+    for i=2:size(c,1)
+        for j=1:(c[i,2]/10)
+            push!(label, relabel[c[i,3]])
+        end
+    end
+    label
+end
+
 function get_raw_labels(SubjectID::Union{Int,String})
     #raw_labels = readcsv("/home/mark/current/general-sleep/patients/HypnogramAASM_patient$SubjectID.txt")[2:end]
     base = "/home/mark/current/general-sleep/physionet/non-edf/"
