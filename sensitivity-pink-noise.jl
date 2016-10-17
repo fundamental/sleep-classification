@@ -1,11 +1,11 @@
 #Setup experiment parameters
 dB = 1
-max_snr = 80dB
-min_snr =  0dB
-int_snr = 10dB
-drange  = data_range()[38:end]
-sub_id  = 2
-subject = drange[sub_id]
+max_snr =  60dB
+min_snr =  20dB
+int_snr =  2.5dB
+drange  =  data_range()[38:end]
+sub_id  =  16 #ST7192
+subject =  drange[sub_id]
 
 function modified_spec_aquire(SubjectID, Data, workingDir, doPlot)
     (Spectra, LSpectra) = generate_spectra(Data, SubjectID, doPlot)
@@ -73,7 +73,13 @@ data = import_data(subject)
 base = std(data)
 if(false)
     for i=min_snr:int_snr:max_snr
+        if(i==20 || i==30 || i==40 || i==50 || i==60)
+            continue
+        end
         noise_mult = base/(10^(i/20.0))
+        println("cur_snr    = ", i, "dB")
+        println("base       = ", base)
+        println("noise_mult = ", noise_mult)
         dd = data + noise_mult*pink_noise(randn(length(data))/3.06)
         PyPlot.close("all")
         writecsv("physionet-noise/$subject-noise$i-dB.csv", dd)
@@ -92,8 +98,10 @@ if(false)
     end
 end
     
+return
 include("misc.jl")
 
+PyPlot.close("all")
 
 #Supervised stage:
 # - Load all non-experimental samples
@@ -104,9 +112,9 @@ include("misc.jl")
 
 FF = Matrix{Float64}[]
 LL = Vector{Int}[]
-if(false)
+if(true)
     for j=drange
-        if(j != "ST7221")
+        if(j != "ST7221" && j != subject)
             tmp = viewStuff(j, "physionet/", 0.7, false)
             push!(LL, map(Int, tmp[1][:]))
             push!(FF, tmp[2])
@@ -117,22 +125,29 @@ end
 EX = Matrix{Float64}[]
 EL = Vector{Int}[]
 for i=min_snr:int_snr:max_snr
+    println("i = $i")
+    if(i == 20 || i == 30 || i == 40 || i == 50 || i== 60)
+        i = round(Int, i)
+    end
     println(subject)
     tmp = viewStuff(string(subject,i), "physionet-denoise/", 0.7, false,
     [string(i),subject])
     push!(EL, map(Int, tmp[1][:]))
     push!(EX, tmp[2])
 end
-for i=1:length(EX)
-    figure(2000+i)
-    imshow(EX[i],aspect="auto",interpolation="none")
-end
+#for i=1:length(EX)
+#    figure(2000+i)
+#    imshow(EX[i],aspect="auto",interpolation="none")
+#end
 
-model = build_forest(vcat(LL[1],LL[3:end]...), hcat(FF[1],FF[3:end]...)', 20, 40)
+figure(1010101)
+model = build_forest(vcat(LL...), hcat(FF...)', 20, 40)
+PyPlot.close("all")
 
 class_result = Vector{Int}[]
 for i=1:length(EX)
     tmp = apply_forest(model, EX[i]')
+    println([(min_snr:int_snr:max_snr)...][i])
     println("classification accuracy = ", mean(EL[i].==tmp))
     push!(class_result, tmp)
 end

@@ -43,7 +43,19 @@ function viewStuff(SubjectID::String, workDir::String, amount::Float64,
     ep  = readcsv("$workDir/edgeParameter$SubjectID.csv")
     dat = nothing
     if(alt_work != nothing)
-        dat = getSpectra(alt_work[2], workDir,alt_work[1])[1:1000,:]
+        sub = alt_work[2]
+        ext = alt_work[1]
+        DD = readcsv("physionet-noise/$sub-noise$ext-dB.csv")[:]
+        figure(999)
+        (Spectra,_) = specgram(DD, 4096, 100, noverlap=0)
+
+        PyPlot.close()
+        Spectra = log(abs(Spectra.^2))
+
+        Sp = Spectra
+        Cl = readcsv("$workDir/Dejunked$SubjectID-cols.csv")
+        Sp[:,find(Cl)]
+        dat = Sp[:,find(Cl)]
     else
         dat = getSpectra(SubjectID, workDir)[1:1000,:]
     end
