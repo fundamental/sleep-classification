@@ -19,6 +19,34 @@ function obtainGradient(samples::Vector{Float64})
     out
 end
 
+function obtainGradient2D(samples::Matrix{Float64})
+    svec = zeros(length(samples))
+    #row quad term
+    #row linear term
+    #column quad term
+    #row linear term
+    #constant bias
+    lp = zeros(length(svec),5)
+    M = size(samples,1)
+    N = size(samples,2)
+    for i=1:M,j=1:N
+        ind = i+(j-1)*M
+        svec[ind] = samples[i,j]
+        lp[ind,1] = ((j-1)/N)^2
+        lp[ind,2] = ((j-1)/N)
+        lp[ind,3] = ((i-1)/N)^2
+        lp[ind,4] = ((i-1)/N)
+        lp[ind,5] = 1
+    end
+    (cr,ar,cc,ac,b) = lp\svec
+
+    out = zeros(M,N)
+    for i=1:M, j=1:N
+        out[i,j] = cr*((j-1)/N)^2 + ar*((j-1)/N) + cc*((i-1)/N)^2 + ac*((i-1)/N) + b
+    end
+    out
+end
+
 function zoneifyGradient(img, X, Y; operator=mean)
     I = float(copy(img))
     I[:,:] = 0
@@ -49,8 +77,10 @@ function zoneifyGradient(img, X, Y; operator=mean)
         row_grad = obtainGradient(row_mean[:])
         col_mean = operator(img[y1:y2,x1:x2],1)
         col_grad = obtainGradient(col_mean[:])
+        eh = obtainGradient2D(img[y1:y2,x1:x2])
         for y=y1:y2, x=x1:x2
-            I[y,x] = (row_grad[1+y-y1]+col_grad[1+x-x1])/2
+            #I[y,x] = (row_grad[1+y-y1]+col_grad[1+x-x1])/2
+            I[y,x] = eh[1+y-y1,1+x-x1]
         end
     end
     I
