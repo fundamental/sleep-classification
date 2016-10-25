@@ -90,10 +90,11 @@ function viewStuff(SubjectID::String, workDir::String, amount::Float64,
     misc=false,alt_work=nothing;x_thresh=0,y_thresh=-1)
     ep  = readcsv("$workDir/edgeParameter$SubjectID.csv")
     dat = nothing
-    if(alt_work != nothing)
+    ll  = nothing
+    if(alt_work != nothing && length(alt_work) == 2)
         sub = alt_work[2]
         ext = alt_work[1]
-        DD = readcsv("physionet-noise/$sub-noise$ext-dB.csv")[:]
+        DD = readcsv("physionet-thresh/$sub-noise$ext-dB.csv")[:]
         figure(999)
         (Spectra,_) = specgram(DD, 4096, 100, noverlap=0)
 
@@ -104,10 +105,15 @@ function viewStuff(SubjectID::String, workDir::String, amount::Float64,
         Cl = readcsv("$workDir/Dejunked$SubjectID-cols.csv")
         Sp[:,find(Cl)]
         dat = Sp[:,find(Cl)]
+        ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
+    elseif(alt_work != nothing && length(alt_work) == 1)
+        dat = getSpectra("ST7192", "physionet")[1:1000,:]
+        ll  = readcsv("physionet/DejunkedlabelsST7192.csv")
     else
         dat = getSpectra(SubjectID, workDir)[1:1000,:]
+        ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
     end
-    ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
+    #ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
 
     X = nothing
     Y = nothing

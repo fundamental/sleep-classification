@@ -26,6 +26,22 @@ function Median3{T}(img::Matrix{T})
 end
 
 """
+Apply a 3x3 mean window to the image
+"""
+function Mean3{T}(img::Matrix{T})
+    result::Matrix{T} = copy(img)
+
+    for x=1:getX(img), y=1:getY(img)
+        opts = [
+        px(img,x-1,y-1),px(img,x+0,y-1),px(img,x+1,y-1),
+        px(img,x-1,y-0),px(img,x+0,y-0),px(img,x+1,y-0),
+        px(img,x-1,y+1),px(img,x+0,y+1),px(img,x+1,y+1)]
+        result[y,x] = mean(opts)
+    end
+    result
+end
+
+"""
 Apply a NxN 2D median to the image
 
 Arguments:

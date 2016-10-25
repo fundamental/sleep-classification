@@ -45,5 +45,62 @@ for i=thresh_bias, j=thresh_width
 end
 end
 
-doSense()
+#doSense()
+#include("misc.jl")
+#drange  =  data_range()[38:end]
+#FF = Matrix{Float64}[]
+#LL = Vector{Int}[]
+#if(true)
+#    for j=drange
+#        if(j != "ST7221" && j != subject)
+#            tmp = viewStuff(j, "physionet/", 0.85, false)
+#            push!(LL, map(Int, tmp[1][:]))
+#            push!(FF, tmp[2])
+#        end
+#    end
+#end
+#
+#figure(1010101)
+#model = build_forest(vcat(LL...), hcat(FF...)', 20, 40)
+#PyPlot.close("all")
 
+#Test C block gradient and coarse bands
+#ttt = Any[]
+#ii=0
+#for i=thresh_bias, j=thresh_width
+#    ii += 1
+#    if(length(ttt) > ii)
+#        continue
+#    end
+#    push!(ttt, Any[(i,j), viewStuff(string(subject,"-$i-$j"),
+#            "physionet-thresh/", 0.85, true, ["etc"],
+#            x_thresh=0.2, y_thresh=0)])
+#end
+#
+#class_result = Vector{Int}[]
+#for t=ttt
+#    tmp = apply_forest(model, t[2][2]')
+#    println("classification accuracy ", t[1], " ", mean(t[2][1].==tmp))
+#    push!(class_result, tmp)
+#end
+
+min_img = nothing
+med_img = nothing
+hgh_img = nothing
+for i=thresh_bias, j=thresh_width
+    if(sns[find((sns[:,1] .== i)&(sns[:,2].==j))[1],3] > 0.89)
+        continue
+    end
+    l=PyPlot.imread("physionet-thresh/coverlow$subject-$i-$j.png")
+    m=PyPlot.imread("physionet-thresh/covermed$subject-$i-$j.png")
+    h=PyPlot.imread("physionet-thresh/coverhigh$subject-$i-$j.png")
+    if(min_img == nothing)
+        min_img = l
+        med_img = m
+        hgh_img = h
+    else
+        min_img += l
+        med_img += m
+        hgh_img += h
+    end
+end
