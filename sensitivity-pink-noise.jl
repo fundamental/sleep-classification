@@ -1,8 +1,8 @@
 #Setup experiment parameters
 dB = 1
-max_snr =  60dB
-min_snr =  20dB
-int_snr =  2.5dB
+max_snr =  80dB
+min_snr =  -80dB
+int_snr =  10dB
 drange  =  data_range()[38:end]
 sub_id  =  16 #ST7192
 subject =  drange[sub_id]
@@ -110,17 +110,17 @@ PyPlot.close("all")
 # - Perform Classification
 # - save the classification result
 
-FF = Matrix{Float64}[]
-LL = Vector{Int}[]
-if(true)
-    for j=drange
-        if(j != "ST7221" && j != subject)
-            tmp = viewStuff(j, "physionet/", 0.7, false)
-            push!(LL, map(Int, tmp[1][:]))
-            push!(FF, tmp[2])
-        end
-    end
-end
+#FF = Matrix{Float64}[]
+#LL = Vector{Int}[]
+#if(true)
+#    for j=drange
+#        if(j != "ST7221" && j != subject)
+#            tmp = viewStuff(j, "physionet/", 0.7, false)
+#            push!(LL, map(Int, tmp[1][:]))
+#            push!(FF, tmp[2])
+#        end
+#    end
+#end
 
 EX = Matrix{Float64}[]
 EL = Vector{Int}[]
@@ -140,9 +140,9 @@ end
 #    imshow(EX[i],aspect="auto",interpolation="none")
 #end
 
-figure(1010101)
-model = build_forest(vcat(LL...), hcat(FF...)', 20, 40)
-PyPlot.close("all")
+#figure(1010101)
+#model = build_forest(vcat(LL...), hcat(FF...)', 20, 40)
+#PyPlot.close("all")
 
 class_result = Vector{Int}[]
 for i=1:length(EX)

@@ -59,30 +59,30 @@ end
 #        end
 #    end
 #end
-#
+
 #figure(1010101)
 #model = build_forest(vcat(LL...), hcat(FF...)', 20, 40)
 #PyPlot.close("all")
 
 #Test C block gradient and coarse bands
 #ttt = Any[]
-#ii=0
-#for i=thresh_bias, j=thresh_width
-#    ii += 1
-#    if(length(ttt) > ii)
-#        continue
-#    end
-#    push!(ttt, Any[(i,j), viewStuff(string(subject,"-$i-$j"),
-#            "physionet-thresh/", 0.85, true, ["etc"],
-#            x_thresh=0.2, y_thresh=0)])
-#end
-#
-#class_result = Vector{Int}[]
-#for t=ttt
-#    tmp = apply_forest(model, t[2][2]')
-#    println("classification accuracy ", t[1], " ", mean(t[2][1].==tmp))
-#    push!(class_result, tmp)
-#end
+ii=0
+for i=thresh_bias, j=thresh_width
+    ii += 1
+    if(length(ttt) > ii)
+        continue
+    end
+    push!(ttt, Any[(i,j), viewStuff(string(subject,"-$i-$j"),
+            "physionet-thresh/", 0.85, true, ["etc"],
+            x_thresh=0.2, y_thresh=0)])
+end
+
+class_result = Vector{Int}[]
+for t=ttt
+    tmp = apply_forest(model, t[2][2]')
+    println("classification accuracy ", t[1], " ", mean(t[2][1].==tmp))
+    push!(class_result, tmp)
+end
 
 min_img = nothing
 med_img = nothing
