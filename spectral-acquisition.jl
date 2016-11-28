@@ -53,9 +53,17 @@ function cheap_upsample(x)
     end
     y
 end
-function import_data(SubjectID::Union{Int,String})
-    f = HDF5.h5open("/home/mark/current/general-sleep/physionet/non-edf/$SubjectID.h5")
-    DataSet::Vector{Float64} = cheap_upsample(read(f["1"]))
+function import_data(SubjectID::Union{Int,String},dataDir::String)
+    #f = HDF5.h5open("/home/mark/current/general-sleep/physionet/non-edf/$SubjectID.h5")
+    f = HDF5.h5open("$dataDir$SubjectID.h5")
+    DataSet::Vector{Float64}
+    if(match(Regex("physionet"), dataDir) != nothing)
+        println("Physionet...")
+        DataSet = cheap_upsample(read(f["1"]))
+    else
+        println("DREAMS...")
+        DataSet = read(f["2"])
+    end
     close(f)
     println("Dataset is ", length(DataSet), " elements")
     DataSet
@@ -64,8 +72,8 @@ end
 """
 Obtain the raw spectra from SubjectID
 """
-function raw_spec(SubjectID::Union{Int,String})
-    DD = import_data(SubjectID)
+function raw_spec(SubjectID::Union{Int,String}, dataDir::String)
+    DD = import_data(SubjectID,dataDir)
     figure(999)
     (Spectra,_) = specgram(DD, 4096, 100, noverlap=0)
     PyPlot.close()

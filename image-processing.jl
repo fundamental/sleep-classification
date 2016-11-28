@@ -76,7 +76,7 @@ function recursiveMedian{T}(img::Matrix{T})
     img
 end
 
-#zero mean and 2nd std is at +-1
+#zero mean and 3rd std is at +-1
 function histNormalize(img::Matrix{Float64})
     t = img-mean(img)
     t./(3*std(t))

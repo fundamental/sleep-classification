@@ -1,5 +1,5 @@
-function getSpectra(SubjectID, workDir, ext="")
-    Sp = raw_spec(SubjectID)
+function getSpectra(SubjectID, workDir, ext="";dataDir="")
+    Sp = raw_spec(SubjectID, dataDir)
     Cl = readcsv("$workDir/Dejunked$SubjectID$ext-cols.csv")
     Sp[:,find(Cl)]
     #imread("$workDir/DejunkedSpectra$SubjectID.png")
@@ -87,7 +87,7 @@ function zoneifyGradient(img, X, Y; operator=mean)
 end
 
 function viewStuff(SubjectID::String, workDir::String, amount::Float64,
-    misc=false,alt_work=nothing;x_thresh=0,y_thresh=-1)
+    misc=false,alt_work=nothing;x_thresh=0,y_thresh=-1,dataDir="")
     ep  = readcsv("$workDir/edgeParameter$SubjectID.csv")
     dat = nothing
     ll  = nothing
@@ -111,7 +111,7 @@ function viewStuff(SubjectID::String, workDir::String, amount::Float64,
         dat = getSpectra("ST7192", "physionet")[1:1000,:]
         ll  = readcsv("physionet/DejunkedlabelsST7192.csv")
     else
-        dat = getSpectra(SubjectID, workDir)[1:1000,:]
+        dat = getSpectra(SubjectID, workDir;dataDir=dataDir)[1:1000,:]
         ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
     end
     #ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
@@ -147,5 +147,24 @@ function viewStuff(SubjectID::String, workDir::String, amount::Float64,
         md = zoneify(dat, X, Y, operator=median)
     end
     out = (1.0-amount)*dat+(amount)*(mn+md)/2.0
-    (ll, out)
+    (round(Int,ll[:]), out)
+end
+
+function image_only_plot(data, fignum, vmin, vmax;figname=nothing)
+    fig = figure(fignum, frameon=false)
+    fig[:set_size_inches](5,5)
+
+    #To make the content fill the whole figure
+
+    ax = PyPlot.plt[:Axes](fig, [0., 0., 1., 1.])
+    ax[:set_axis_off]()
+    fig[:add_axes](ax)
+
+    #Then draw your image on it :
+
+    ax[:imshow](data, aspect="auto", interpolation="none", vmin=vmin,vmax=vmax)
+    if(figname != nothing)
+        fig[:savefig](figname, dpi=128.0)
+    end
+    fig
 end

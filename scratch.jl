@@ -100,6 +100,7 @@ if(false)
     end
 end
 
+if(false)
 function viewStuff(SubjectID, workDir, doPlot=true, misc=false)
     ep  = readcsv("$workDir/edgeParameter$SubjectID.csv")
     dat = getSpectra(SubjectID, workDir)[1:1000,:]
@@ -151,6 +152,7 @@ function viewStuff(SubjectID, workDir, doPlot=true, misc=false)
         imshow(mapslices(sortperm,out,1),aspect="auto",interpolation="none");
     end
     (ll, dat, mn, md, out)
+end
 end
 
 function getSpectra(SubjectID, workDir)

@@ -749,12 +749,12 @@ scatter(resE[1:end-2,1],1.0-resF[1:end-2,2],color="m")
 axis([0,1,0,0.2])
 nothing
 
-figure(1001)
-plot(class_resultD[50])
-figure(1001)
-plot(class_resultA[50]+0.1)
-figure(1001)
-plot(truth+0.2)
+#figure(1001)
+#plot(class_resultD[50])
+#figure(1001)
+#plot(class_resultA[50]+0.1)
+#figure(1001)
+#plot(truth+0.2)
 
 #Scratch Experiement to see what happens when stuff is trained and tested with 
 #Configuration C
@@ -798,13 +798,16 @@ figure(1002)
 title("Test C block gradient and coarse bands 85%")
 tmp = viewStuff(subject, "physionet/", 0.85, true, x_thresh=0.5, y_thresh=0)
 kk  = tmp[2]
-imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
+#imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
+image_only_plot(kk,1002,-5,16, figname="type-c-85-percent-denoise.png")
 println("domain = ", minimum(tmp[2]), " to ", maximum(tmp[2]))
 figure(1003)
 title("Test A block constant and fine bands 85%")
 tmp = viewStuff(subject, "physionet/", 0.85, false, x_thresh=0.5, y_thresh=-1)
 println("domain = ", minimum(tmp[2]), " to ", maximum(tmp[2]))
-imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
+kk = tmp[2]
+#imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
+image_only_plot(kk,1003,-5,16,figname="type-a-85-percent-denoise.png")
 figure(1004)
 title("Test C block gradient and coarse bands 100%")
 tmp = viewStuff(subject, "physionet/", 1.00, true, x_thresh=0.5, y_thresh=0)
@@ -818,5 +821,14 @@ imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
 figure(1006)
 title("Raw")
 tmp = viewStuff(subject, "physionet/", 0.00, false, x_thresh=0.5, y_thresh=-1)
+kk=tmp[2]
 println("domain = ", minimum(tmp[2]), " to ", maximum(tmp[2]))
-imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
+#imshow(tmp[2],aspect="auto",interpolation="none", vmin=-5, vmax=16)
+image_only_plot(kk,1006,-5,16,figname="type-any-0-percent-denoise.png")
+tmp = viewStuff(subject, "physionet/", 0.85, true,  x_thresh=0.5)
+kk  = tmp[2]
+image_only_plot(kk,1007,-5,16,figname="type-b-85-percent-denoise.png")
+tmp = viewStuff(subject, "physionet/", 0.85, false, x_thresh=0.5 ,y_thresh=0)
+kk  = tmp[2]
+image_only_plot(kk,1007,-5,16,figname="type-d-85-percent-denoise.png")
+
