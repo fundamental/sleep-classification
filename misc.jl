@@ -111,7 +111,9 @@ function viewStuff(SubjectID::String, workDir::String, amount::Float64,
         dat = getSpectra("ST7192", "physionet")[1:1000,:]
         ll  = readcsv("physionet/DejunkedlabelsST7192.csv")
     else
-        dat = getSpectra(SubjectID, workDir;dataDir=dataDir)[1:1000,:]
+        tmp = getSpectra(SubjectID, workDir;dataDir=dataDir)
+        println(size(tmp))
+        dat = tmp[1:1000,:]
         ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")
     end
     #ll  = readcsv("$workDir/Dejunkedlabels$SubjectID.csv")

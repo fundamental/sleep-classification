@@ -95,6 +95,9 @@ end
 
 """
 Use K-means to Generate a Rough Estimate of low rank band structure
+
+This variation seems to be more efficient computationally wise, though
+it doesn't solve the same optimization as the alternative version
 """
 function identifyInterestBands(img::Matrix{Float64})
     Mtx      = Matrix{Float64}
@@ -103,10 +106,30 @@ function identifyInterestBands(img::Matrix{Float64})
     c       -= mean(c)
     mc::Mtx  = mapslices(x->linearMedian(x,9),c,2)
     k        = kmeans(mc, 8, maxiter=20)
+    #println(names(k))
     diffsig  = sign(k.centers[1:end-1,:]).!=sign(k.centers[2:end,:])
     roi::Vec = sum(diffsig,2)[:]
     roi      = conv([1,1,1], roi)
+    figure(131);plot(roi./maximum(roi))
     eliminateTransitionNoise(max(0,roi-1))
+end
+
+"""
+Use K-means clustering to Generate a Rough Estimate of low rank band structure
+"""
+function identifyInterestBandsAlt(img::Matrix{Float64})
+    Mtx      = Matrix{Float64}
+    Vec      = Vector{Float64}
+    I::Mtx   = img'
+    df::Vec  = zeros(size(img,1)-1)
+    trials   = 200
+    for i=1:200
+        k    = kmeans(I, 20, maxiter=15)
+        df  += k.assignments[1:end-1] .!= k.assignments[2:end]
+    end
+    roi::Vec = df.>(0.4trials)
+    figure(131);plot(roi./maximum(roi))
+    eliminateTransitionNoise(roi)
 end
 
 """
@@ -114,7 +137,7 @@ Eliminate modality transitions which seem to occur too frequently
 (this is a heuristic method to reduce the total variation with a prior that
 state variations are expected to occur more frequently at lower frequencies)
 """
-function eliminateTransitionNoise(bands::Vector{Float64}, Hz::Real=100, thresh::Real=0.3)
+function eliminateTransitionNoise(bands::Vector{Float64}, Hz::Real=100, thresh::Real=0.2)
     N = length(bands)
     classOut = zeros(N)
     logHz = linspace(0, Hz, N)

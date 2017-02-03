@@ -129,12 +129,13 @@ end
 
 #Identify Spikes
 MaxSpikeLen = 3
-function refold(data)
-    t1 = sort(data)
-    tout = Float64[]
-    mid = ceil(Int,length(t1)/2)
+function refold(data::Vector{Float64})
+    N::Int                = length(data)
+    t1::Vector{Float64}   = sort(data)
+    tout::Vector{Float64} = Float64[]
+    mid::Int              = ceil(Int,length(t1)/2)
     for i=1:mid
-        if(i+mid < length(t1))
+        if(i+mid < N)
             push!(tout, t1[mid+i])
         end
         if(i-mid > 0)
@@ -144,27 +145,20 @@ function refold(data)
     tout
 end
 
+function estimateMinVar(excitation)
+    N::Int               = length(excitation)
+    minmean::Float64     = Inf
+    minstd::Float64      = Inf
+    minelms::Int         = -1
+    tmp::Vector{Float64} = Float64[]
 
-"""
-Eliminate series of outliers in the data
-"""
-function robustSpikeElimination(Spectra::Matrix{Float64})
-    excitation = sum((Spectra[:,1:end-1].-Spectra[:,2:end]).^2,1)[:]
-    println(excitation)
-    ex = refold(excitation)
-
-    minmean = Inf
-    minstd  = Inf
-    minelms = -1
-    tmp = Float64[]
     #Run a min variance alg to find a suitable gausian description of this
     #spectral distance
-    N = length(excitation)
     for i=round(Int,0.8N):N
-        samples = excitation[1:i]
+        samples::Vector{Float64} = excitation[1:i]
 
-        m = mean(samples)
-        s = std(samples)
+        m::Float64 = mean(samples)
+        s::Float64 = std(samples)
         if(s<minstd)
             minstd  = s
             minmean = m
@@ -172,19 +166,59 @@ function robustSpikeElimination(Spectra::Matrix{Float64})
         end
         push!(tmp, s)
     end
-    println("Excluding ", sum(excitation.>(minmean+1.5minstd)), " Elements...")
-    println("Of Total Possible ", size(Spectra)[2], "...")
-    mixed = zeros(N)
-    good = Int[]
+    (minmean, minstd)
+end
+
+"""
+Alternative way to estimate Random Consensus Min Variance
+"""
+function estimateMinVarAlt(data)
+    N = length(data)
+    trials = 10000
+    ss = []
+    mm = []
+    for i=1:trials
+        tmp1::Vector{Int}     = sortperm(rand(N))[1:round(Int, 0.8N)]
+        smps::Vector{Float64} = data[tmp1]
+        push!(ss, std(smps))
+        push!(mm, mean(smps))
+    end
+    #println([median(mm), minimum(ss), mean(excitation), std(excitation)])
+    (median(mm), minimum(ss))
+end
+
+
+"""
+Eliminate series of outliers in the data
+"""
+function robustSpikeElimination(Spectra::Matrix{Float64})
+    excitation::Vector{Float64} = sum((Spectra[:,1:end-1].-Spectra[:,2:end]).^2,1)[:]
+    N::Int                      = length(excitation)
+
+    (minmean, minstd) = estimateMinVar(excitation)
+
+
+    mixed::Vector{Float64} = zeros(N)
+    good::Vector{Int}      = Int[]
+
+    threshold::Float64 = (minmean+1.5minstd)
+    println([minmean, minstd])
+
     for i=1:N
-        if(excitation[i] .< (minmean+1.5minstd) && 
-            (excitation[max(1,i-1)] .< (minmean+1.5minstd) ||
-             excitation[min(N,i+1)] .< (minmean+1.5minstd)) &&
-             excitation[i] > 1e-8)
+        cur::Float64  = excitation[i]
+        prev::Float64 = excitation[max(1,i-1)]
+        next::Float64 = excitation[min(N,i+1)]
+
+        if(cur < threshold &&
+            (prev < threshold || next < threshold) &&
+             cur > 1e-8)
             push!(good, i)
         end
     end
+
     mixed[good] = 1
+    println("Excluding ", sum(mixed.==0), " Elements...")
+    println("Of Total Possible ", size(Spectra)[2], "...")
     (good,mixed)
 end
 

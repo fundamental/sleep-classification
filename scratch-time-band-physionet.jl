@@ -1,4 +1,4 @@
-subjects = data_range()
+#subjects = data_range()
 
 #sub_test = "ST7011"
 #data     = import_data(sub_test)
