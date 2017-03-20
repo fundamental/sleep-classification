@@ -1,3 +1,4 @@
+using DSP
 using HDF5
 using PyPlot
 using DecisionTree
@@ -8,10 +9,11 @@ Import a EEG datastream
 Example:
 import_data(5) #Import 5th subject
 """
-function import_data(SubjectID)
+function import_data_band(SubjectID)
     f = HDF5.h5open("/home/mark/current/general-sleep/subject$SubjectID.h5")
     DataSet = read(f["2"])
     close(f)
+    println("here...")
     println("Dataset is ", length(DataSet), " elements")
     convert(Vector{Float64},DataSet)
 end
@@ -81,7 +83,7 @@ end
 Load all data and extract features and labels
 """
 function load_all()
-    C = Any[];for i=1:20; push!(C, make_features(import_data(i)));end
+    C = Any[];for i=1:20; push!(C, make_features(import_data_band(i)));end
     L = Any[];for i=1:20; push!(L, import_labels(i)[1:6:end]);end
     #fixup L
     for i=1:20;

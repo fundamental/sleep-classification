@@ -2050,4 +2050,61 @@ cross_bnd = [
  b(res_bnd_dp_pt) b(res_bnd_dp_pc) b(res_bnd_dp_ds) b(res_bnd_dp_dp)]
 
 
+function build_horrifying_latex_table()
+    cvt(x, word) = string('\\', word[1], "{", round(Int, 100*(1-x)), "\\%}")
+
+    println("\\begin{tabular}{|l|cc|cc|cc|cc|}")
+    println("\\hline")
+
+    words = ["DDS", "DRS", "Time", "Band"]
+    words = ["Phys. T.", "Phys. C", "DREAM S.", "DREAM P."]
+    rank_word=["topd", "topd", "topa", "topa"]
+    for w in words
+        print("&\\multicolumn{2}{c|}{$w}")
+    end
+    println("\\\\ \\hline")
+
+    for i in 1:4
+        w = words[i]
+        println("\\multirow{2}{*}{$w}&")
+        print("  ")
+        for j in 1:4
+            if(i == j)
+                print("x & x")#\\tablecolor{gray}}")
+            else
+                print(cvt(cross_dds[i,j],
+                rank_word[find(cross_dds[i,j].==sort([cross_dds[i,j], cross_raw[i,j],
+                cross_bnd[i,j], cross_tim[i,j]]))]))
+                print(" & ")
+                print(cvt(cross_raw[i,j],
+                rank_word[find(cross_raw[i,j].==sort([cross_dds[i,j], cross_raw[i,j],
+                cross_bnd[i,j], cross_tim[i,j]]))]))
+            end
+            if(j != 4)
+                print(" & ")
+            end
+        end
+        println("\\\\")
+        print("& ")
+        for j in 1:4
+            if(i == j)
+                print("x & x")
+            else
+                print(cvt(cross_bnd[i,j],
+                rank_word[find(cross_bnd[i,j].==sort([cross_dds[i,j], cross_raw[i,j],
+                cross_bnd[i,j], cross_tim[i,j]]))]))
+                print(" & ")
+                print(cvt(cross_tim[i,j],
+                rank_word[find(cross_tim[i,j].==sort([cross_dds[i,j], cross_raw[i,j],
+                cross_bnd[i,j], cross_tim[i,j]]))]))
+            end
+            if(j != 4)
+                print(" & ")
+            end
+        end
+        println("\\\\ \\hline")
+    end
+    println("\\end{tabular}")
+end
+
 

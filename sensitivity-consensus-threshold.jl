@@ -37,21 +37,27 @@ PyPlot.close("all")
 #if(true)
 #    for j=drange
 #        if(j != "ST7221" && j != subject)
-#            tmp = viewStuff(j, "physionet/", 0.85, false)
+#            tmp = viewStuff(j, "physionet/", 0.85, false,
+#            dataDir="/home/mark/current/general-sleep/physionet/non-edf/")
 #            push!(LL, map(Int, tmp[1][:]))
 #            push!(FF, tmp[2])
 #        end
 #    end
 #end
-#
-##for i=1:length(EX)
-##    figure(2000+i)
-##    imshow(EX[i],aspect="auto",interpolation="none")
-##end
-#
-#figure(1010101)
-#model = build_forest(vcat(LL...), hcat(FF...)', 20, 40)
-#PyPlot.close("all")
+
+#for i=1:length(EX)
+#    figure(2000+i)
+#    imshow(EX[i],aspect="auto",interpolation="none")
+#end
+
+figure(1010101)
+model = build_forest(vcat(LL...), hcat(FF...)', 20, 100, 0.3, 20)
+PyPlot.close("all")
+probs = apply_forest_proba(model, hcat(FF...)', [1,2,3,4,5])
+model_full = build_forest(vcat(LL...), hcat(hcat(FF...)', probs), 40, 100, 0.3, 20)
+
+
+return
 
 #Test A block constant and fine bands
 #ttt = Any[]

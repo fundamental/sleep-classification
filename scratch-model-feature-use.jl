@@ -40,3 +40,16 @@ function get_class_difficulty_recur(feats, node, depth)
         push!(feats[node.majority], depth)
     end
 end
+
+function apply_model_prob(feats, model)
+    prob = zeros(5, size(feats,2))
+    trees = length(model.trees)
+    for i = 1:size(feats,2)
+        for j=1:trees
+            out  = apply_tree(feats[:,i], model.tree)
+            prob[out, i] += 1.0/trees
+        end
+    end
+    prob
+end
+
